@@ -58,15 +58,21 @@ def load_market_data():
 
 def parse_percentage(value):
     """Parse percentage string to float"""
+    if pd.isna(value):
+        return np.nan
     if isinstance(value, str):
-        return float(value.replace('%', '').strip())
-    return value
+        try:
+            return float(value.replace('%', '').strip())
+        except (ValueError, AttributeError):
+            return np.nan
+    return float(value)
 
 def format_perf_columns(df):
     """Convert performance string columns to numeric for calculations"""
-    perf_cols = [col for col in df.columns if col.startswith('Perf %')]
     df_numeric = df.copy()
-    for col in perf_cols:
+    # Convert all percentage columns (Perf % and Price Change %)
+    percentage_cols = [col for col in df_numeric.columns if '%' in col]
+    for col in percentage_cols:
         if col in df_numeric.columns:
             df_numeric[col] = df_numeric[col].apply(parse_percentage)
     return df_numeric
@@ -106,12 +112,15 @@ def main():
     with col3:
         if 'Perf % 1M' in df_numeric.columns:
             top_perf = df_numeric['Perf % 1M'].max()
-            st.metric("Best Monthly Return", f"{top_perf:.2f}%" if pd.notna(top_perf) else "N/A")
+            st.metric("Best Monthly Return", f"{top_perf:.2f}%" if pd.notna(top_perf) and not np.isinf(top_perf) else "N/A")
     
     with col4:
         if 'Price Change %' in df_numeric.columns:
-            avg_change = df_numeric['Price Change %'].mean()
-            st.metric("Avg Price Change", f"{avg_change:.2f}%" if pd.notna(avg_change) else "N/A")
+            try:
+                avg_change = df_numeric['Price Change %'].mean()
+                st.metric("Avg Price Change", f"{avg_change:.2f}%" if pd.notna(avg_change) and not np.isinf(avg_change) else "N/A")
+            except (TypeError, ValueError):
+                st.metric("Avg Price Change", "N/A")
     
     # Filters
     st.markdown("---")
@@ -186,18 +195,23 @@ def main():
     
     with col_chart1:
         if 'Perf % 1M' in filtered_df_numeric.columns and 'Category' in filtered_df.columns:
-            perf_by_cat = filtered_df_numeric.groupby(filtered_df['Category'])['Perf % 1M'].mean().sort_values(ascending=False)
-            fig = px.bar(
-                x=perf_by_cat.values,
-                y=perf_by_cat.index,
-                title="Avg 1-Month Performance by Category",
-                labels={'x': 'Performance (%)', 'y': 'Category'},
-                orientation='h',
-                color=perf_by_cat.values,
-                color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084']
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            try:
+                perf_by_cat = filtered_df_numeric.groupby(filtered_df['Category'])['Perf % 1M'].mean().sort_values(ascending=False)
+                perf_by_cat = perf_by_cat[perf_by_cat.notna()]  # Remove NaN values
+                if len(perf_by_cat) > 0:
+                    fig = px.bar(
+                        x=perf_by_cat.values,
+                        y=perf_by_cat.index,
+                        title="Avg 1-Month Performance by Category",
+                        labels={'x': 'Performance (%)', 'y': 'Category'},
+                        orientation='h',
+                        color=perf_by_cat.values,
+                        color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084']
+                    )
+                    fig.update_layout(height=400)
+                    st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.warning("Could not generate category performance chart")
     
     with col_chart2:
         if 'Category' in filtered_df.columns:
@@ -217,21 +231,27 @@ def main():
         # Calculate average performance for each timeframe
         timeframe_avg = {}
         for col in perf_columns:
-            timeframe_avg[col.replace('Perf % ', '')] = filtered_df_numeric[col].mean()
+            try:
+                avg_val = pd.to_numeric(filtered_df_numeric[col], errors='coerce').mean()
+                if pd.notna(avg_val) and not np.isinf(avg_val):
+                    timeframe_avg[col.replace('Perf % ', '')] = avg_val
+            except:
+                pass
         
-        timeframe_df = pd.DataFrame(list(timeframe_avg.items()), columns=['Timeframe', 'Avg Performance'])
-        
-        fig = px.bar(
-            timeframe_df,
-            x='Timeframe',
-            y='Avg Performance',
-            title="Average Performance Across All Timeframes",
-            color='Avg Performance',
-            color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084'],
-            labels={'Avg Performance': 'Performance (%)'}
-        )
-        fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        if timeframe_avg:
+            timeframe_df = pd.DataFrame(list(timeframe_avg.items()), columns=['Timeframe', 'Avg Performance'])
+            
+            fig = px.bar(
+                timeframe_df,
+                x='Timeframe',
+                y='Avg Performance',
+                title="Average Performance Across All Timeframes",
+                color='Avg Performance',
+                color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084'],
+                labels={'Avg Performance': 'Performance (%)'}
+            )
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
     
     # Top/Bottom performers for multiple timeframes
     st.markdown("---")
