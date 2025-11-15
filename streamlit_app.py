@@ -56,6 +56,17 @@ def load_market_data():
         st.error(f"Error loading CSV: {str(e)}")
         return None
 
+def initialize_session_state():
+    """Initialize session state variables"""
+    if 'data_loaded' not in st.session_state:
+        st.session_state.data_loaded = False
+    if 'selected_category' not in st.session_state:
+        st.session_state.selected_category = "All"
+    if 'search_term' not in st.session_state:
+        st.session_state.search_term = ""
+    if 'selected_type' not in st.session_state:
+        st.session_state.selected_type = "All"
+
 def parse_percentage(value):
     """Parse percentage string to float"""
     if pd.isna(value):
@@ -78,6 +89,9 @@ def format_perf_columns(df):
     return df_numeric
 
 def main():
+    # Initialize session state
+    initialize_session_state()
+    
     # Header
     st.title("📊 Capital.com Market Analyzer")
     st.markdown("Real-time market performance tracking across multiple asset classes")
@@ -129,46 +143,61 @@ def main():
     
     with col_filter1:
         if 'Category' in df.columns:
-            categories_list = sorted(df['Category'].unique())
-            selected_category = st.selectbox(
+            categories_list = ["All"] + sorted(df['Category'].unique().tolist())
+            try:
+                current_idx = categories_list.index(st.session_state.selected_category)
+            except ValueError:
+                current_idx = 0
+            st.session_state.selected_category = st.selectbox(
                 "Filter by Category",
-                ["All"] + categories_list,
-                key="category_filter"
+                categories_list,
+                index=current_idx,
+                key="category_filter_widget"
             )
         else:
-            selected_category = "All"
+            st.session_state.selected_category = "All"
     
     with col_filter2:
-        search_term = st.text_input("Search Markets", placeholder="Enter market name or symbol...", key="search_filter")
+        st.session_state.search_term = st.text_input(
+            "Search Markets", 
+            placeholder="Enter market name or symbol...", 
+            value=st.session_state.search_term, 
+            key="search_filter_widget"
+        )
     
     with col_filter3:
         if 'Type' in df.columns:
-            types_list = sorted(df['Type'].dropna().unique())
-            selected_type = st.selectbox(
+            types_list = ["All"] + sorted(df['Type'].dropna().unique().tolist())
+            try:
+                current_idx = types_list.index(st.session_state.selected_type)
+            except ValueError:
+                current_idx = 0
+            st.session_state.selected_type = st.selectbox(
                 "Filter by Type",
-                ["All"] + types_list if len(types_list) > 0 else ["All"],
-                key="type_filter"
+                types_list,
+                index=current_idx,
+                key="type_filter_widget"
             )
         else:
-            selected_type = "All"
+            st.session_state.selected_type = "All"
     
-    # Apply filters
+    # Apply filters using session state
     filtered_df = df.copy()
     filtered_df_numeric = df_numeric.copy()
     
-    if 'Category' in filtered_df.columns and selected_category != "All":
-        mask = filtered_df['Category'] == selected_category
+    if 'Category' in filtered_df.columns and st.session_state.selected_category != "All":
+        mask = filtered_df['Category'] == st.session_state.selected_category
         filtered_df = filtered_df[mask]
         filtered_df_numeric = filtered_df_numeric[mask]
     
-    if search_term:
-        mask = (filtered_df['Name'].str.contains(search_term, case=False, na=False) | 
-                filtered_df['Symbol'].str.contains(search_term, case=False, na=False))
+    if st.session_state.search_term:
+        mask = (filtered_df['Name'].str.contains(st.session_state.search_term, case=False, na=False) | 
+                filtered_df['Symbol'].str.contains(st.session_state.search_term, case=False, na=False))
         filtered_df = filtered_df[mask]
         filtered_df_numeric = filtered_df_numeric[mask]
     
-    if 'Type' in filtered_df.columns and selected_type != "All":
-        mask = filtered_df['Type'] == selected_type
+    if 'Type' in filtered_df.columns and st.session_state.selected_type != "All":
+        mask = filtered_df['Type'] == st.session_state.selected_type
         filtered_df = filtered_df[mask]
         filtered_df_numeric = filtered_df_numeric[mask]
     
