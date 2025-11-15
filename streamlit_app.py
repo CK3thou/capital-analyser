@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
+import numpy as np
 
 st.set_page_config(
     page_title="Capital.com Market Analyzer",
@@ -29,6 +30,14 @@ st.markdown("""
         color: white;
         text-align: center;
     }
+    .positive {
+        color: #00D084;
+        font-weight: bold;
+    }
+    .negative {
+        color: #FF4B4B;
+        font-weight: bold;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -46,6 +55,21 @@ def load_market_data():
     except Exception as e:
         st.error(f"Error loading CSV: {str(e)}")
         return None
+
+def parse_percentage(value):
+    """Parse percentage string to float"""
+    if isinstance(value, str):
+        return float(value.replace('%', '').strip())
+    return value
+
+def format_perf_columns(df):
+    """Convert performance string columns to numeric for calculations"""
+    perf_cols = [col for col in df.columns if col.startswith('Perf %')]
+    df_numeric = df.copy()
+    for col in perf_cols:
+        if col in df_numeric.columns:
+            df_numeric[col] = df_numeric[col].apply(parse_percentage)
+    return df_numeric
 
 def main():
     # Header
@@ -66,7 +90,10 @@ def main():
         """)
         return
     
-    # Statistics
+    # Convert performance columns to numeric for calculations
+    df_numeric = format_perf_columns(df)
+    
+    # Statistics Dashboard
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -77,112 +104,248 @@ def main():
         st.metric("Categories", categories)
     
     with col3:
-        if 'perf_1w' in df.columns:
-            top_perf = df['perf_1w'].max()
-            st.metric("Best Weekly Return", f"{top_perf:.2f}%" if pd.notna(top_perf) else "N/A")
+        if 'Perf % 1M' in df_numeric.columns:
+            top_perf = df_numeric['Perf % 1M'].max()
+            st.metric("Best Monthly Return", f"{top_perf:.2f}%" if pd.notna(top_perf) else "N/A")
     
     with col4:
-        file_mod_time = datetime.fromtimestamp(os.path.getmtime('capital_markets_analysis.csv'))
-        st.metric("Last Updated", file_mod_time.strftime('%Y-%m-%d %H:%M'))
+        if 'Price Change %' in df_numeric.columns:
+            avg_change = df_numeric['Price Change %'].mean()
+            st.metric("Avg Price Change", f"{avg_change:.2f}%" if pd.notna(avg_change) else "N/A")
     
     # Filters
     st.markdown("---")
     
-    col_filter1, col_filter2 = st.columns(2)
+    col_filter1, col_filter2, col_filter3 = st.columns(3)
     
     with col_filter1:
         if 'Category' in df.columns:
-            categories = sorted(df['Category'].unique())
+            categories_list = sorted(df['Category'].unique())
             selected_category = st.selectbox(
                 "Filter by Category",
-                ["All"] + categories
+                ["All"] + categories_list
             )
     
     with col_filter2:
-        search_term = st.text_input("Search Markets", placeholder="Enter market name...")
+        search_term = st.text_input("Search Markets", placeholder="Enter market name or symbol...")
+    
+    with col_filter3:
+        if 'Type' in df.columns:
+            types_list = sorted(df['Type'].dropna().unique())
+            selected_type = st.selectbox(
+                "Filter by Type",
+                ["All"] + types_list if len(types_list) > 0 else ["All"]
+            )
     
     # Apply filters
     filtered_df = df.copy()
+    filtered_df_numeric = df_numeric.copy()
     
     if 'Category' in filtered_df.columns and selected_category != "All":
-        filtered_df = filtered_df[filtered_df['Category'] == selected_category]
+        mask = filtered_df['Category'] == selected_category
+        filtered_df = filtered_df[mask]
+        filtered_df_numeric = filtered_df_numeric[mask]
     
     if search_term:
-        filtered_df = filtered_df[
-            filtered_df['instrumentName'].str.contains(search_term, case=False, na=False)
-        ]
+        mask = (filtered_df['Name'].str.contains(search_term, case=False, na=False) | 
+                filtered_df['Symbol'].str.contains(search_term, case=False, na=False))
+        filtered_df = filtered_df[mask]
+        filtered_df_numeric = filtered_df_numeric[mask]
     
-    # Display data
-    st.markdown(f"### Markets ({len(filtered_df)} results)")
+    if 'Type' in filtered_df.columns and selected_type != "All":
+        mask = filtered_df['Type'] == selected_type
+        filtered_df = filtered_df[mask]
+        filtered_df_numeric = filtered_df_numeric[mask]
     
-    # Performance columns to display
-    perf_columns = [col for col in filtered_df.columns if col.startswith('perf_')]
+    # Define all columns from run_analyzer.py
+    all_columns = [
+        'Category', 'Symbol', 'Name', 'Current Price', 'Currency', 
+        'Price Change %', 'Perf % 1W', 'Perf % 1M', 'Perf % 3M', 
+        'Perf % 6M', 'Perf % YTD', 'Perf % 1Y', 'Perf % 5Y', 
+        'Perf % 10Y', 'Market Status', 'Type'
+    ]
     
-    display_cols = ['instrumentName', 'Category']
-    display_cols.extend(perf_columns)
+    # Get available columns
+    available_cols = [col for col in all_columns if col in filtered_df.columns]
     
-    # Ensure all display columns exist
-    display_cols = [col for col in display_cols if col in filtered_df.columns]
+    # Display data table
+    st.markdown(f"### 📋 Markets Data ({len(filtered_df)} results)")
     
-    # Format performance columns
-    display_df = filtered_df[display_cols].copy()
-    for col in perf_columns:
-        if col in display_df.columns:
-            display_df[col] = display_df[col].apply(
-                lambda x: f"{x:.2f}%" if pd.notna(x) else "N/A"
-            )
-    
+    display_df = filtered_df[available_cols].copy()
     st.dataframe(display_df, use_container_width=True, hide_index=True)
     
-    # Charts
+    # Performance Analysis Charts
     st.markdown("---")
-    st.markdown("### Performance Analysis")
+    st.markdown("### 📈 Performance Analysis")
     
+    # Get performance columns
+    perf_columns = [col for col in filtered_df_numeric.columns if col.startswith('Perf %')]
+    
+    # Chart 1: Average performance by category
     col_chart1, col_chart2 = st.columns(2)
     
     with col_chart1:
-        if 'perf_1m' in df.columns and 'Category' in df.columns:
-            perf_by_category = df.groupby('Category')['perf_1m'].mean().sort_values(ascending=False)
+        if 'Perf % 1M' in filtered_df_numeric.columns and 'Category' in filtered_df.columns:
+            perf_by_cat = filtered_df_numeric.groupby(filtered_df['Category'])['Perf % 1M'].mean().sort_values(ascending=False)
             fig = px.bar(
-                x=perf_by_category.values,
-                y=perf_by_category.index,
-                title="Average 1-Month Performance by Category",
+                x=perf_by_cat.values,
+                y=perf_by_cat.index,
+                title="Avg 1-Month Performance by Category",
                 labels={'x': 'Performance (%)', 'y': 'Category'},
-                orientation='h'
+                orientation='h',
+                color=perf_by_cat.values,
+                color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084']
             )
+            fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
     
     with col_chart2:
-        if 'Category' in df.columns:
-            category_counts = df['Category'].value_counts()
+        if 'Category' in filtered_df.columns:
+            category_counts = filtered_df['Category'].value_counts()
             fig = px.pie(
                 values=category_counts.values,
                 names=category_counts.index,
-                title="Markets by Category"
+                title="Markets Distribution by Category"
             )
+            fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
     
-    # Top/Bottom performers
+    # Chart 3: Performance comparison across timeframes
+    st.markdown("### ⏱️ Multi-Timeframe Performance Comparison")
+    
+    if perf_columns:
+        # Calculate average performance for each timeframe
+        timeframe_avg = {}
+        for col in perf_columns:
+            timeframe_avg[col.replace('Perf % ', '')] = filtered_df_numeric[col].mean()
+        
+        timeframe_df = pd.DataFrame(list(timeframe_avg.items()), columns=['Timeframe', 'Avg Performance'])
+        
+        fig = px.bar(
+            timeframe_df,
+            x='Timeframe',
+            y='Avg Performance',
+            title="Average Performance Across All Timeframes",
+            color='Avg Performance',
+            color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084'],
+            labels={'Avg Performance': 'Performance (%)'}
+        )
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Top/Bottom performers for multiple timeframes
     st.markdown("---")
-    col_top1, col_top2 = st.columns(2)
+    st.markdown("### 🏆 Top & Bottom Performers")
     
-    with col_top1:
-        if 'perf_1m' in df.columns:
-            top_5 = df.nlargest(5, 'perf_1m')[['instrumentName', 'perf_1m']]
-            st.markdown("#### 🚀 Top 5 Performers (1M)")
-            for idx, row in top_5.iterrows():
-                perf = row['perf_1m']
-                if pd.notna(perf):
-                    st.write(f"• **{row['instrumentName']}**: {perf:.2f}%")
+    # Create tabs for different timeframes
+    tab_1w, tab_1m, tab_3m, tab_1y = st.tabs(["1 Week", "1 Month", "3 Months", "1 Year"])
     
-    with col_top2:
-        if 'perf_1m' in df.columns:
-            bottom_5 = df.nsmallest(5, 'perf_1m')[['instrumentName', 'perf_1m']]
-            st.markdown("#### 📉 Bottom 5 Performers (1M)")
-            for idx, row in bottom_5.iterrows():
-                perf = row['perf_1m']
-                if pd.notna(perf):
-                    st.write(f"• **{row['instrumentName']}**: {perf:.2f}%")
+    with tab_1w:
+        col_top, col_bot = st.columns(2)
+        if 'Perf % 1W' in filtered_df_numeric.columns:
+            with col_top:
+                top_5 = filtered_df_numeric.nlargest(5, 'Perf % 1W')[['Name', 'Symbol', 'Perf % 1W']]
+                st.markdown("#### 🚀 Top 5 Gainers")
+                for idx, (i, row) in enumerate(top_5.iterrows(), 1):
+                    perf = row['Perf % 1W']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+            
+            with col_bot:
+                bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 1W')[['Name', 'Symbol', 'Perf % 1W']]
+                st.markdown("#### 📉 Top 5 Losers")
+                for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
+                    perf = row['Perf % 1W']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+    
+    with tab_1m:
+        col_top, col_bot = st.columns(2)
+        if 'Perf % 1M' in filtered_df_numeric.columns:
+            with col_top:
+                top_5 = filtered_df_numeric.nlargest(5, 'Perf % 1M')[['Name', 'Symbol', 'Perf % 1M']]
+                st.markdown("#### 🚀 Top 5 Gainers")
+                for idx, (i, row) in enumerate(top_5.iterrows(), 1):
+                    perf = row['Perf % 1M']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+            
+            with col_bot:
+                bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 1M')[['Name', 'Symbol', 'Perf % 1M']]
+                st.markdown("#### 📉 Top 5 Losers")
+                for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
+                    perf = row['Perf % 1M']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+    
+    with tab_3m:
+        col_top, col_bot = st.columns(2)
+        if 'Perf % 3M' in filtered_df_numeric.columns:
+            with col_top:
+                top_5 = filtered_df_numeric.nlargest(5, 'Perf % 3M')[['Name', 'Symbol', 'Perf % 3M']]
+                st.markdown("#### 🚀 Top 5 Gainers")
+                for idx, (i, row) in enumerate(top_5.iterrows(), 1):
+                    perf = row['Perf % 3M']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+            
+            with col_bot:
+                bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 3M')[['Name', 'Symbol', 'Perf % 3M']]
+                st.markdown("#### 📉 Top 5 Losers")
+                for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
+                    perf = row['Perf % 3M']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+    
+    with tab_1y:
+        col_top, col_bot = st.columns(2)
+        if 'Perf % 1Y' in filtered_df_numeric.columns:
+            with col_top:
+                top_5 = filtered_df_numeric.nlargest(5, 'Perf % 1Y')[['Name', 'Symbol', 'Perf % 1Y']]
+                st.markdown("#### 🚀 Top 5 Gainers")
+                for idx, (i, row) in enumerate(top_5.iterrows(), 1):
+                    perf = row['Perf % 1Y']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+            
+            with col_bot:
+                bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 1Y')[['Name', 'Symbol', 'Perf % 1Y']]
+                st.markdown("#### 📉 Top 5 Losers")
+                for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
+                    perf = row['Perf % 1Y']
+                    if pd.notna(perf):
+                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+    
+    # Market Status Distribution
+    st.markdown("---")
+    st.markdown("### 🔍 Market Status Analysis")
+    
+    col_status1, col_status2 = st.columns(2)
+    
+    with col_status1:
+        if 'Market Status' in filtered_df.columns:
+            status_dist = filtered_df['Market Status'].value_counts()
+            fig = px.bar(
+                x=status_dist.index,
+                y=status_dist.values,
+                title="Markets by Status",
+                labels={'x': 'Status', 'y': 'Count'},
+                color=status_dist.index
+            )
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col_status2:
+        if 'Currency' in filtered_df.columns:
+            currency_dist = filtered_df['Currency'].value_counts().head(10)
+            fig = px.bar(
+                x=currency_dist.index,
+                y=currency_dist.values,
+                title="Top 10 Currencies",
+                labels={'x': 'Currency', 'y': 'Count'}
+            )
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
     
     # Info
     st.markdown("---")
@@ -192,7 +355,11 @@ def main():
     - **Data**: Fetched from Capital.com REST API
     - **Categories**: Commodities, Forex, Indices, Cryptocurrencies, Shares/ETFs
     - **Metrics**: 1W, 1M, 3M, 6M, YTD, 1Y, 5Y, 10Y performance
+    - **Columns**: Category, Symbol, Name, Price, Currency, Performance, Status, Type
     """)
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
