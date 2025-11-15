@@ -132,19 +132,25 @@ def main():
             categories_list = sorted(df['Category'].unique())
             selected_category = st.selectbox(
                 "Filter by Category",
-                ["All"] + categories_list
+                ["All"] + categories_list,
+                key="category_filter"
             )
+        else:
+            selected_category = "All"
     
     with col_filter2:
-        search_term = st.text_input("Search Markets", placeholder="Enter market name or symbol...")
+        search_term = st.text_input("Search Markets", placeholder="Enter market name or symbol...", key="search_filter")
     
     with col_filter3:
         if 'Type' in df.columns:
             types_list = sorted(df['Type'].dropna().unique())
             selected_type = st.selectbox(
                 "Filter by Type",
-                ["All"] + types_list if len(types_list) > 0 else ["All"]
+                ["All"] + types_list if len(types_list) > 0 else ["All"],
+                key="type_filter"
             )
+        else:
+            selected_type = "All"
     
     # Apply filters
     filtered_df = df.copy()
