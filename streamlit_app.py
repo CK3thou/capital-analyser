@@ -141,21 +141,19 @@ def main():
     
     col_filter1, col_filter2, col_filter3 = st.columns(3)
     
+    # Always create widgets to avoid duplicate key errors
     with col_filter1:
-        if 'Category' in df.columns:
-            categories_list = ["All"] + sorted(df['Category'].unique().tolist())
-            try:
-                current_idx = categories_list.index(st.session_state.selected_category)
-            except ValueError:
-                current_idx = 0
-            st.session_state.selected_category = st.selectbox(
-                "Filter by Category",
-                categories_list,
-                index=current_idx,
-                key="category_filter_widget"
-            )
-        else:
-            st.session_state.selected_category = "All"
+        categories_list = ["All"] + sorted(df['Category'].unique().tolist()) if 'Category' in df.columns else ["All"]
+        try:
+            current_idx = categories_list.index(st.session_state.selected_category)
+        except ValueError:
+            current_idx = 0
+        st.session_state.selected_category = st.selectbox(
+            "Filter by Category",
+            categories_list,
+            index=current_idx,
+            key="category_filter_widget"
+        )
     
     with col_filter2:
         st.session_state.search_term = st.text_input(
@@ -166,20 +164,17 @@ def main():
         )
     
     with col_filter3:
-        if 'Type' in df.columns:
-            types_list = ["All"] + sorted(df['Type'].dropna().unique().tolist())
-            try:
-                current_idx = types_list.index(st.session_state.selected_type)
-            except ValueError:
-                current_idx = 0
-            st.session_state.selected_type = st.selectbox(
-                "Filter by Type",
-                types_list,
-                index=current_idx,
-                key="type_filter_widget"
-            )
-        else:
-            st.session_state.selected_type = "All"
+        types_list = ["All"] + sorted(df['Type'].dropna().unique().tolist()) if 'Type' in df.columns else ["All"]
+        try:
+            current_idx = types_list.index(st.session_state.selected_type)
+        except ValueError:
+            current_idx = 0
+        st.session_state.selected_type = st.selectbox(
+            "Filter by Type",
+            types_list,
+            index=current_idx,
+            key="type_filter_widget"
+        )
     
     # Apply filters using session state
     filtered_df = df.copy()
