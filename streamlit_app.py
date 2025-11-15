@@ -148,20 +148,24 @@ def main():
             current_idx = categories_list.index(st.session_state.selected_category)
         except ValueError:
             current_idx = 0
-        st.session_state.selected_category = st.selectbox(
+        selected_cat = st.selectbox(
             "Filter by Category",
             categories_list,
             index=current_idx,
             key="category_filter_widget"
         )
+        if selected_cat != st.session_state.selected_category:
+            st.session_state.selected_category = selected_cat
     
     with col_filter2:
-        st.session_state.search_term = st.text_input(
+        search_input = st.text_input(
             "Search Markets", 
             placeholder="Enter market name or symbol...", 
             value=st.session_state.search_term, 
             key="search_filter_widget"
         )
+        if search_input != st.session_state.search_term:
+            st.session_state.search_term = search_input
     
     with col_filter3:
         types_list = ["All"] + sorted(df['Type'].dropna().unique().tolist()) if 'Type' in df.columns else ["All"]
@@ -169,12 +173,14 @@ def main():
             current_idx = types_list.index(st.session_state.selected_type)
         except ValueError:
             current_idx = 0
-        st.session_state.selected_type = st.selectbox(
+        selected_typ = st.selectbox(
             "Filter by Type",
             types_list,
             index=current_idx,
             key="type_filter_widget"
         )
+        if selected_typ != st.session_state.selected_type:
+            st.session_state.selected_type = selected_typ
     
     # Apply filters using session state
     filtered_df = df.copy()
@@ -211,7 +217,7 @@ def main():
     st.markdown(f"### 📋 Markets Data ({len(filtered_df)} results)")
     
     display_df = filtered_df[available_cols].copy()
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(display_df, width='stretch', hide_index=True)
     
     # Performance Analysis Charts
     st.markdown("---")
@@ -239,7 +245,7 @@ def main():
                         color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084']
                     )
                     fig.update_layout(height=400)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
             except Exception as e:
                 st.warning("Could not generate category performance chart")
     
@@ -252,7 +258,7 @@ def main():
                 title="Markets Distribution by Category"
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     # Chart 3: Performance comparison across timeframes
     st.markdown("### ⏱️ Multi-Timeframe Performance Comparison")
@@ -281,9 +287,9 @@ def main():
                 labels={'Avg Performance': 'Performance (%)'}
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
-    # Top/Bottom performers for multiple timeframes
+    # Top/Bottom performers
     st.markdown("---")
     st.markdown("### 🏆 Top & Bottom Performers")
     
@@ -383,9 +389,7 @@ def main():
                 color=status_dist.index
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with col_status2:
+            st.plotly_chart(fig, width='stretch')
         if 'Currency' in filtered_df.columns:
             currency_dist = filtered_df['Currency'].value_counts().head(10)
             fig = px.bar(
@@ -395,9 +399,7 @@ def main():
                 labels={'x': 'Currency', 'y': 'Count'}
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    # Info
+            st.plotly_chart(fig, width='stretch')
     st.markdown("---")
     st.markdown("""
     ### About
