@@ -64,8 +64,6 @@ def initialize_session_state():
         st.session_state.selected_category = "All"
     if 'search_term' not in st.session_state:
         st.session_state.search_term = ""
-    if 'selected_type' not in st.session_state:
-        st.session_state.selected_type = "All"
 
 def parse_percentage(value):
     """Parse percentage string to float"""
@@ -139,7 +137,7 @@ def main():
     # Filters
     st.markdown("---")
     
-    col_filter1, col_filter2, col_filter3 = st.columns(3)
+    col_filter1, col_filter2 = st.columns(2)
     
     # Always create widgets to avoid duplicate key errors
     with col_filter1:
@@ -167,21 +165,6 @@ def main():
         if search_input != st.session_state.search_term:
             st.session_state.search_term = search_input
     
-    with col_filter3:
-        types_list = ["All"] + sorted(df['Type'].dropna().unique().tolist()) if 'Type' in df.columns else ["All"]
-        try:
-            current_idx = types_list.index(st.session_state.selected_type)
-        except ValueError:
-            current_idx = 0
-        selected_typ = st.selectbox(
-            "Filter by Type",
-            types_list,
-            index=current_idx,
-            key="type_filter_widget"
-        )
-        if selected_typ != st.session_state.selected_type:
-            st.session_state.selected_type = selected_typ
-    
     # Apply filters using session state
     filtered_df = df.copy()
     filtered_df_numeric = df_numeric.copy()
@@ -194,11 +177,6 @@ def main():
     if st.session_state.search_term:
         mask = (filtered_df['Name'].str.contains(st.session_state.search_term, case=False, na=False) | 
                 filtered_df['Symbol'].str.contains(st.session_state.search_term, case=False, na=False))
-        filtered_df = filtered_df[mask]
-        filtered_df_numeric = filtered_df_numeric[mask]
-    
-    if 'Type' in filtered_df.columns and st.session_state.selected_type != "All":
-        mask = filtered_df['Type'] == st.session_state.selected_type
         filtered_df = filtered_df[mask]
         filtered_df_numeric = filtered_df_numeric[mask]
     
