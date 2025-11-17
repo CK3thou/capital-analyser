@@ -195,7 +195,7 @@ def main():
     st.markdown(f"### 📋 Markets Data ({len(filtered_df)} results)")
     
     display_df = filtered_df[available_cols].copy()
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(display_df, width='stretch', hide_index=True)
     
     # Performance Analysis Charts
     st.markdown("---")
@@ -223,7 +223,7 @@ def main():
                         color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084']
                     )
                     fig.update_layout(height=400)
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.warning("Could not generate category performance chart")
     
@@ -236,7 +236,7 @@ def main():
                 title="Markets Distribution by Category"
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
     
     # Chart 3: Performance comparison across timeframes
     st.markdown("### ⏱️ Multi-Timeframe Performance Comparison")
@@ -265,7 +265,7 @@ def main():
                 labels={'Avg Performance': 'Performance (%)'}
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
     
     # Top/Bottom performers
     st.markdown("---")
@@ -275,7 +275,7 @@ def main():
     tab_1w, tab_1m, tab_3m, tab_1y = st.tabs(["1 Week", "1 Month", "3 Months", "1 Year"])
     
     def show_top_by_category(perf_col):
-        """Show top performer from each category"""
+        """Show top 5 performers from each category"""
         if perf_col in filtered_df_numeric.columns and 'Category' in filtered_df.columns:
             categories = filtered_df['Category'].unique()
             
@@ -284,16 +284,18 @@ def main():
                 cat_data = filtered_df_numeric[cat_mask]
                 
                 if len(cat_data) > 0:
-                    top_performer = cat_data.nlargest(1, perf_col)
-                    if len(top_performer) > 0:
-                        row = top_performer.iloc[0]
+                    st.markdown(f"**{category.upper()}**")
+                    top_performers = cat_data.nlargest(5, perf_col)[['Name', 'Symbol', perf_col]]
+                    
+                    for idx, (i, row) in enumerate(top_performers.iterrows(), 1):
                         perf = row[perf_col]
                         if pd.notna(perf):
                             color_class = 'positive' if perf > 0 else 'negative'
-                            st.write(f"**{category.upper()}**: {row['Name']} ({row['Symbol']}) - <span class='{color_class}'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                            st.write(f"{idx}. {row['Name']} ({row['Symbol']}) - <span class='{color_class}'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                    st.write("")  # Add spacing between categories
     
     with tab_1w:
-        st.markdown("#### 🚀 Top Performer in Each Category (1 Week)")
+        st.markdown("#### 🚀 Top 5 Performers in Each Category (1 Week)")
         show_top_by_category('Perf % 1W')
         
         st.markdown("---")
@@ -317,7 +319,7 @@ def main():
                         st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     with tab_1m:
-        st.markdown("#### 🚀 Top Performer in Each Category (1 Month)")
+        st.markdown("#### 🚀 Top 5 Performers in Each Category (1 Month)")
         show_top_by_category('Perf % 1M')
         
         st.markdown("---")
@@ -341,7 +343,7 @@ def main():
                         st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     with tab_3m:
-        st.markdown("#### 🚀 Top Performer in Each Category (3 Months)")
+        st.markdown("#### 🚀 Top 5 Performers in Each Category (3 Months)")
         show_top_by_category('Perf % 3M')
         
         st.markdown("---")
@@ -365,7 +367,7 @@ def main():
                         st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     with tab_1y:
-        st.markdown("#### 🚀 Top Performer in Each Category (1 Year)")
+        st.markdown("#### 🚀 Top 5 Performers in Each Category (1 Year)")
         show_top_by_category('Perf % 1Y')
         
         st.markdown("---")
@@ -405,7 +407,7 @@ def main():
                 color=status_dist.index
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         if 'Currency' in filtered_df.columns:
             currency_dist = filtered_df['Currency'].value_counts().head(10)
             fig = px.bar(
@@ -415,7 +417,7 @@ def main():
                 labels={'x': 'Currency', 'y': 'Count'}
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
     st.markdown("---")
     st.markdown("""
     ### About
@@ -425,9 +427,6 @@ def main():
     - **Metrics**: 1W, 1M, 3M, 6M, YTD, 1Y, 5Y, 10Y performance
     - **Columns**: Category, Symbol, Name, Price, Currency, Performance, Status, Type
     """)
-
-if __name__ == "__main__":
-    main()
 
 if __name__ == "__main__":
     main()
