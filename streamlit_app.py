@@ -195,7 +195,7 @@ def main():
     st.markdown(f"### 📋 Markets Data ({len(filtered_df)} results)")
     
     display_df = filtered_df[available_cols].copy()
-    st.dataframe(display_df, width='stretch', hide_index=True)
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
     
     # Performance Analysis Charts
     st.markdown("---")
@@ -269,86 +269,124 @@ def main():
     
     # Top/Bottom performers
     st.markdown("---")
-    st.markdown("### 🏆 Top & Bottom Performers")
+    st.markdown("### 🏆 Top Performers by Category")
     
     # Create tabs for different timeframes
     tab_1w, tab_1m, tab_3m, tab_1y = st.tabs(["1 Week", "1 Month", "3 Months", "1 Year"])
     
+    def show_top_by_category(perf_col):
+        """Show top performer from each category"""
+        if perf_col in filtered_df_numeric.columns and 'Category' in filtered_df.columns:
+            categories = filtered_df['Category'].unique()
+            
+            for category in sorted(categories):
+                cat_mask = filtered_df['Category'] == category
+                cat_data = filtered_df_numeric[cat_mask]
+                
+                if len(cat_data) > 0:
+                    top_performer = cat_data.nlargest(1, perf_col)
+                    if len(top_performer) > 0:
+                        row = top_performer.iloc[0]
+                        perf = row[perf_col]
+                        if pd.notna(perf):
+                            color_class = 'positive' if perf > 0 else 'negative'
+                            st.write(f"**{category.upper()}**: {row['Name']} ({row['Symbol']}) - <span class='{color_class}'>{perf:.2f}%</span>", unsafe_allow_html=True)
+    
     with tab_1w:
+        st.markdown("#### 🚀 Top Performer in Each Category (1 Week)")
+        show_top_by_category('Perf % 1W')
+        
+        st.markdown("---")
+        st.markdown("#### 📊 Overall Top 5 Gainers & Losers")
         col_top, col_bot = st.columns(2)
         if 'Perf % 1W' in filtered_df_numeric.columns:
             with col_top:
                 top_5 = filtered_df_numeric.nlargest(5, 'Perf % 1W')[['Name', 'Symbol', 'Perf % 1W']]
-                st.markdown("#### 🚀 Top 5 Gainers")
+                st.markdown("**Top 5 Gainers**")
                 for idx, (i, row) in enumerate(top_5.iterrows(), 1):
                     perf = row['Perf % 1W']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
             
             with col_bot:
                 bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 1W')[['Name', 'Symbol', 'Perf % 1W']]
-                st.markdown("#### 📉 Top 5 Losers")
+                st.markdown("**Top 5 Losers**")
                 for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
                     perf = row['Perf % 1W']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     with tab_1m:
+        st.markdown("#### 🚀 Top Performer in Each Category (1 Month)")
+        show_top_by_category('Perf % 1M')
+        
+        st.markdown("---")
+        st.markdown("#### 📊 Overall Top 5 Gainers & Losers")
         col_top, col_bot = st.columns(2)
         if 'Perf % 1M' in filtered_df_numeric.columns:
             with col_top:
                 top_5 = filtered_df_numeric.nlargest(5, 'Perf % 1M')[['Name', 'Symbol', 'Perf % 1M']]
-                st.markdown("#### 🚀 Top 5 Gainers")
+                st.markdown("**Top 5 Gainers**")
                 for idx, (i, row) in enumerate(top_5.iterrows(), 1):
                     perf = row['Perf % 1M']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
             
             with col_bot:
                 bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 1M')[['Name', 'Symbol', 'Perf % 1M']]
-                st.markdown("#### 📉 Top 5 Losers")
+                st.markdown("**Top 5 Losers**")
                 for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
                     perf = row['Perf % 1M']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     with tab_3m:
+        st.markdown("#### 🚀 Top Performer in Each Category (3 Months)")
+        show_top_by_category('Perf % 3M')
+        
+        st.markdown("---")
+        st.markdown("#### 📊 Overall Top 5 Gainers & Losers")
         col_top, col_bot = st.columns(2)
         if 'Perf % 3M' in filtered_df_numeric.columns:
             with col_top:
                 top_5 = filtered_df_numeric.nlargest(5, 'Perf % 3M')[['Name', 'Symbol', 'Perf % 3M']]
-                st.markdown("#### 🚀 Top 5 Gainers")
+                st.markdown("**Top 5 Gainers**")
                 for idx, (i, row) in enumerate(top_5.iterrows(), 1):
                     perf = row['Perf % 3M']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
             
             with col_bot:
                 bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 3M')[['Name', 'Symbol', 'Perf % 3M']]
-                st.markdown("#### 📉 Top 5 Losers")
+                st.markdown("**Top 5 Losers**")
                 for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
                     perf = row['Perf % 3M']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     with tab_1y:
+        st.markdown("#### 🚀 Top Performer in Each Category (1 Year)")
+        show_top_by_category('Perf % 1Y')
+        
+        st.markdown("---")
+        st.markdown("#### 📊 Overall Top 5 Gainers & Losers")
         col_top, col_bot = st.columns(2)
         if 'Perf % 1Y' in filtered_df_numeric.columns:
             with col_top:
                 top_5 = filtered_df_numeric.nlargest(5, 'Perf % 1Y')[['Name', 'Symbol', 'Perf % 1Y']]
-                st.markdown("#### 🚀 Top 5 Gainers")
+                st.markdown("**Top 5 Gainers**")
                 for idx, (i, row) in enumerate(top_5.iterrows(), 1):
                     perf = row['Perf % 1Y']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='positive'>{perf:.2f}%</span>", unsafe_allow_html=True)
             
             with col_bot:
                 bottom_5 = filtered_df_numeric.nsmallest(5, 'Perf % 1Y')[['Name', 'Symbol', 'Perf % 1Y']]
-                st.markdown("#### 📉 Top 5 Losers")
+                st.markdown("**Top 5 Losers**")
                 for idx, (i, row) in enumerate(bottom_5.iterrows(), 1):
                     perf = row['Perf % 1Y']
                     if pd.notna(perf):
-                        st.write(f"**{idx}. {row['Name']}** ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}): <span class='negative'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     # Market Status Distribution
     st.markdown("---")
