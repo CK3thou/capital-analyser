@@ -111,30 +111,7 @@ def main():
     # Convert performance columns to numeric for calculations
     df_numeric = format_perf_columns(df)
     
-    # Statistics Dashboard
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total Markets", len(df))
-    
-    with col2:
-        categories = df['Category'].nunique() if 'Category' in df.columns else 0
-        st.metric("Categories", categories)
-    
-    with col3:
-        if 'Perf % 1M' in df_numeric.columns:
-            top_perf = df_numeric['Perf % 1M'].max()
-            st.metric("Best Monthly Return", f"{top_perf:.2f}%" if pd.notna(top_perf) and not np.isinf(top_perf) else "N/A")
-    
-    with col4:
-        if 'Price Change %' in df_numeric.columns:
-            try:
-                avg_change = df_numeric['Price Change %'].mean()
-                st.metric("Avg Price Change", f"{avg_change:.2f}%" if pd.notna(avg_change) and not np.isinf(avg_change) else "N/A")
-            except (TypeError, ValueError):
-                st.metric("Avg Price Change", "N/A")
-    
-    # Filters
+    # Filters (moved before metrics)
     st.markdown("---")
     
     col_filter1, col_filter2 = st.columns(2)
@@ -179,6 +156,38 @@ def main():
                 filtered_df['Symbol'].str.contains(st.session_state.search_term, case=False, na=False))
         filtered_df = filtered_df[mask]
         filtered_df_numeric = filtered_df_numeric[mask]
+    
+    # Statistics Dashboard (using filtered data)
+    st.markdown("---")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Markets", len(filtered_df))
+    
+    with col2:
+        if st.session_state.selected_category == "All":
+            categories = filtered_df['Category'].nunique() if 'Category' in filtered_df.columns else 0
+            st.metric("Categories", categories)
+        else:
+            # Show category name when filtered
+            st.metric("Category", st.session_state.selected_category)
+    
+    with col3:
+        if 'Perf % 1M' in filtered_df_numeric.columns:
+            top_perf = filtered_df_numeric['Perf % 1M'].max()
+            st.metric("Best Monthly Return", f"{top_perf:.2f}%" if pd.notna(top_perf) and not np.isinf(top_perf) else "N/A")
+        else:
+            st.metric("Best Monthly Return", "N/A")
+    
+    with col4:
+        if 'Price Change %' in filtered_df_numeric.columns:
+            try:
+                avg_change = filtered_df_numeric['Price Change %'].mean()
+                st.metric("Avg Price Change", f"{avg_change:.2f}%" if pd.notna(avg_change) and not np.isinf(avg_change) else "N/A")
+            except (TypeError, ValueError):
+                st.metric("Avg Price Change", "N/A")
+        else:
+            st.metric("Avg Price Change", "N/A")
     
     # Define all columns from run_analyzer.py
     all_columns = [
