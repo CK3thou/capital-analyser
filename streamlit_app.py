@@ -208,44 +208,46 @@ def main():
     
     # Performance Analysis Charts
     st.markdown("---")
-    st.markdown("### 📈 Performance Analysis")
+    category_label = st.session_state.selected_category if st.session_state.selected_category != "All" else "All Categories"
+    st.markdown(f"### 📈 Performance Analysis - {category_label}")
     
     # Get performance columns
     perf_columns = [col for col in filtered_df_numeric.columns if col.startswith('Perf %')]
     
-    # Chart 1: Average performance by category
-    col_chart1, col_chart2 = st.columns(2)
-    
-    with col_chart1:
-        if 'Perf % 1M' in filtered_df_numeric.columns and 'Category' in filtered_df.columns:
-            try:
-                perf_by_cat = filtered_df_numeric.groupby(filtered_df['Category'])['Perf % 1M'].mean().sort_values(ascending=False)
-                perf_by_cat = perf_by_cat[perf_by_cat.notna()]  # Remove NaN values
-                if len(perf_by_cat) > 0:
-                    fig = px.bar(
-                        x=perf_by_cat.values,
-                        y=perf_by_cat.index,
-                        title="Avg 1-Month Performance by Category",
-                        labels={'x': 'Performance (%)', 'y': 'Category'},
-                        orientation='h',
-                        color=perf_by_cat.values,
-                        color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084']
-                    )
-                    fig.update_layout(height=400)
-                    st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.warning("Could not generate category performance chart")
-    
-    with col_chart2:
-        if 'Category' in filtered_df.columns:
-            category_counts = filtered_df['Category'].value_counts()
-            fig = px.pie(
-                values=category_counts.values,
-                names=category_counts.index,
-                title="Markets Distribution by Category"
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+    # Chart 1: Average performance by category (only show when All is selected)
+    if st.session_state.selected_category == "All":
+        col_chart1, col_chart2 = st.columns(2)
+        
+        with col_chart1:
+            if 'Perf % 1M' in filtered_df_numeric.columns and 'Category' in filtered_df.columns:
+                try:
+                    perf_by_cat = filtered_df_numeric.groupby(filtered_df['Category'])['Perf % 1M'].mean().sort_values(ascending=False)
+                    perf_by_cat = perf_by_cat[perf_by_cat.notna()]  # Remove NaN values
+                    if len(perf_by_cat) > 0:
+                        fig = px.bar(
+                            x=perf_by_cat.values,
+                            y=perf_by_cat.index,
+                            title="Avg 1-Month Performance by Category",
+                            labels={'x': 'Performance (%)', 'y': 'Category'},
+                            orientation='h',
+                            color=perf_by_cat.values,
+                            color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084']
+                        )
+                        fig.update_layout(height=400)
+                        st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.warning("Could not generate category performance chart")
+        
+        with col_chart2:
+            if 'Category' in filtered_df.columns:
+                category_counts = filtered_df['Category'].value_counts()
+                fig = px.pie(
+                    values=category_counts.values,
+                    names=category_counts.index,
+                    title="Markets Distribution by Category"
+                )
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
     
     # Chart 3: Performance comparison across timeframes
     st.markdown("### ⏱️ Multi-Timeframe Performance Comparison")
@@ -263,12 +265,13 @@ def main():
         
         if timeframe_avg:
             timeframe_df = pd.DataFrame(list(timeframe_avg.items()), columns=['Timeframe', 'Avg Performance'])
+            chart_title = f"Average Performance Across All Timeframes - {category_label}"
             
             fig = px.bar(
                 timeframe_df,
                 x='Timeframe',
                 y='Avg Performance',
-                title="Average Performance Across All Timeframes",
+                title=chart_title,
                 color='Avg Performance',
                 color_continuous_scale=['#FF4B4B', '#FFD700', '#00D084'],
                 labels={'Avg Performance': 'Performance (%)'}
@@ -278,7 +281,8 @@ def main():
     
     # Top/Bottom performers
     st.markdown("---")
-    st.markdown("### 🏆 Top Performers by Category")
+    performers_title = f"### 🏆 Top Performers - {category_label}"
+    st.markdown(performers_title)
     
     # Create tabs for different timeframes
     tab_1w, tab_1m, tab_3m, tab_1y = st.tabs(["1 Week", "1 Month", "3 Months", "1 Year"])
@@ -288,20 +292,30 @@ def main():
         if perf_col in filtered_df_numeric.columns and 'Category' in filtered_df.columns:
             categories = filtered_df['Category'].unique()
             
-            for category in sorted(categories):
-                cat_mask = filtered_df['Category'] == category
-                cat_data = filtered_df_numeric[cat_mask]
-                
-                if len(cat_data) > 0:
-                    st.markdown(f"**{category.upper()}**")
-                    top_performers = cat_data.nlargest(5, perf_col)[['Name', 'Symbol', perf_col]]
+            # Only show category breakdown if "All" is selected and there are multiple categories
+            if st.session_state.selected_category == "All" and len(categories) > 1:
+                for category in sorted(categories):
+                    cat_mask = filtered_df['Category'] == category
+                    cat_data = filtered_df_numeric[cat_mask]
                     
-                    for idx, (i, row) in enumerate(top_performers.iterrows(), 1):
-                        perf = row[perf_col]
-                        if pd.notna(perf):
-                            color_class = 'positive' if perf > 0 else 'negative'
-                            st.write(f"{idx}. {row['Name']} ({row['Symbol']}) - <span class='{color_class}'>{perf:.2f}%</span>", unsafe_allow_html=True)
-                    st.write("")  # Add spacing between categories
+                    if len(cat_data) > 0:
+                        st.markdown(f"**{category.upper()}**")
+                        top_performers = cat_data.nlargest(5, perf_col)[['Name', 'Symbol', perf_col]]
+                        
+                        for idx, (i, row) in enumerate(top_performers.iterrows(), 1):
+                            perf = row[perf_col]
+                            if pd.notna(perf):
+                                color_class = 'positive' if perf > 0 else 'negative'
+                                st.write(f"{idx}. {row['Name']} ({row['Symbol']}) - <span class='{color_class}'>{perf:.2f}%</span>", unsafe_allow_html=True)
+                        st.write("")  # Add spacing between categories
+            else:
+                # Show top performers for the selected category
+                top_performers = filtered_df_numeric.nlargest(10, perf_col)[['Name', 'Symbol', perf_col]]
+                for idx, (i, row) in enumerate(top_performers.iterrows(), 1):
+                    perf = row[perf_col]
+                    if pd.notna(perf):
+                        color_class = 'positive' if perf > 0 else 'negative'
+                        st.write(f"{idx}. {row['Name']} ({row['Symbol']}) - <span class='{color_class}'>{perf:.2f}%</span>", unsafe_allow_html=True)
     
     with tab_1w:
         st.markdown("#### 🚀 Top 5 Performers in Each Category (1 Week)")
@@ -401,7 +415,7 @@ def main():
     
     # Market Status Distribution
     st.markdown("---")
-    st.markdown("### 🔍 Market Status Analysis")
+    st.markdown(f"### 🔍 Market Status Analysis - {category_label}")
     
     col_status1, col_status2 = st.columns(2)
     
@@ -411,18 +425,20 @@ def main():
             fig = px.bar(
                 x=status_dist.index,
                 y=status_dist.values,
-                title="Markets by Status",
+                title=f"Markets by Status - {category_label}",
                 labels={'x': 'Status', 'y': 'Count'},
                 color=status_dist.index
             )
             fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
+    
+    with col_status2:
         if 'Currency' in filtered_df.columns:
             currency_dist = filtered_df['Currency'].value_counts().head(10)
             fig = px.bar(
                 x=currency_dist.index,
                 y=currency_dist.values,
-                title="Top 10 Currencies",
+                title=f"Top 10 Currencies - {category_label}",
                 labels={'x': 'Currency', 'y': 'Count'}
             )
             fig.update_layout(height=400)
