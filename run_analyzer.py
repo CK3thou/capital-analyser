@@ -1,4 +1,4 @@
-"""
+z"""
 Main script to fetch and analyze Capital.com markets
 """
 
