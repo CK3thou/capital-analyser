@@ -196,6 +196,25 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-primary);
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s ease;
+        }
+
+        th:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .sort-indicator {
+            margin-left: 6px;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+        }
+
+        th:hover .sort-indicator {
+            opacity: 1;
+            color: var(--primary);
         }
 
         td {
@@ -484,24 +503,24 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Category</th>
-                            <th>Symbol</th>
-                            <th>Name</th>
-                            <th>Current Price</th>
-                            <th>Currency</th>
-                            <th>30M</th>
-                            <th>1H</th>
-                            <th>4H</th>
-                            <th>6H</th>
-                            <th>1D</th>
-                            <th>1W</th>
-                            <th>1M</th>
-                            <th>3M</th>
-                            <th>6M</th>
-                            <th>YTD</th>
-                            <th>1Y</th>
-                            <th>5Y</th>
-                            <th>10Y</th>
+                            <th onclick="sortTable('Category')">Category <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('Symbol')">Symbol <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('Name')">Name <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('Current Price')">Current Price <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('Currency')">Currency <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_30m')">30M <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_1h')">1H <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_4h')">4H <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_6h')">6H <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_1d')">1D <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_1w')">1W <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_1m')">1M <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_3m')">3M <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_6m')">6M <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_ytd')">YTD <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_1y')">1Y <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_5y')">5Y <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_10y')">10Y <span class="sort-indicator">↕</span></th>
                         </tr>
                     </thead>
                     <tbody id="marketTable">
@@ -519,6 +538,84 @@
 
     <script>
         let allMarkets = [];
+        let currentSortColumn = null;
+        let currentSortOrder = 'asc'; // 'asc' or 'desc'
+
+        function sortTable(columnKey) {
+            // Toggle sort order if clicking the same column
+            if (currentSortColumn === columnKey) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = columnKey;
+                currentSortOrder = 'asc';
+            }
+
+            // Filter current display
+            const category = document.getElementById('category').value;
+            const search = document.getElementById('search').value.toLowerCase();
+            let filteredMarkets = allMarkets;
+
+            if (category !== 'All') {
+                filteredMarkets = filteredMarkets.filter(m => m.Category === category);
+            }
+
+            if (search) {
+                filteredMarkets = filteredMarkets.filter(m =>
+                    (m.Name && m.Name.toLowerCase().includes(search)) ||
+                    (m.Symbol && m.Symbol.toLowerCase().includes(search))
+                );
+            }
+
+            // Sort markets
+            filteredMarkets.sort((a, b) => {
+                let aVal = a[columnKey];
+                let bVal = b[columnKey];
+
+                // Handle numeric values
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return currentSortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+
+                // Handle string values
+                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                    const comparison = aVal.localeCompare(bVal);
+                    return currentSortOrder === 'asc' ? comparison : -comparison;
+                }
+
+                // Handle null/undefined
+                if (aVal == null && bVal == null) return 0;
+                if (aVal == null) return currentSortOrder === 'asc' ? 1 : -1;
+                if (bVal == null) return currentSortOrder === 'asc' ? -1 : 1;
+
+                return 0;
+            });
+
+            // Update sort indicators
+            document.querySelectorAll('th .sort-indicator').forEach(indicator => {
+                indicator.textContent = '↕';
+                indicator.style.opacity = '0.6';
+                indicator.style.color = 'inherit';
+            });
+
+            // Highlight current sort column
+            const headers = document.querySelectorAll('th');
+            const columnMap = {
+                'Category': 0, 'Symbol': 1, 'Name': 2, 'Current Price': 3, 'Currency': 4,
+                'perf_30m': 5, 'perf_1h': 6, 'perf_4h': 7, 'perf_6h': 8, 'perf_1d': 9,
+                'perf_1w': 10, 'perf_1m': 11, 'perf_3m': 12, 'perf_6m': 13, 'perf_ytd': 14,
+                'perf_1y': 15, 'perf_5y': 16, 'perf_10y': 17
+            };
+
+            if (columnMap[columnKey] !== undefined) {
+                const headerIndex = columnMap[columnKey];
+                const indicator = headers[headerIndex].querySelector('.sort-indicator');
+                indicator.textContent = currentSortOrder === 'asc' ? '↑' : '↓';
+                indicator.style.opacity = '1';
+                indicator.style.color = 'var(--primary)';
+            }
+
+            displayMarkets(filteredMarkets);
+        }
 
         async function init() {
             try {
