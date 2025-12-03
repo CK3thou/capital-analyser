@@ -1,8 +1,10 @@
 """
 Main script to fetch and analyze Capital.com markets
+Stores data directly to SQLite database (primary storage)
 """
 
 import csv
+import sqlite3
 import time
 import webbrowser
 import threading
@@ -26,6 +28,123 @@ def format_percentage(value: float) -> str:
     if value is None:
         return "N/A"
     return f"{value:.2f}%"
+
+
+def init_database(db_path: str = 'market_data.db'):
+    """Initialize SQLite database with markets table"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS markets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            symbol TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            current_price REAL,
+            currency TEXT,
+            price_change_pct REAL,
+            perf_30m_pct REAL,
+            perf_1h_pct REAL,
+            perf_4h_pct REAL,
+            perf_6h_pct REAL,
+            perf_1d_pct REAL,
+            perf_1w_pct REAL,
+            perf_1m_pct REAL,
+            perf_3m_pct REAL,
+            perf_6m_pct REAL,
+            perf_ytd_pct REAL,
+            perf_1y_pct REAL,
+            perf_5y_pct REAL,
+            perf_10y_pct REAL,
+            market_status TEXT,
+            type TEXT,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print(f"✓ Database initialized at {db_path}")
+
+
+def store_to_database(market_data: list, db_path: str = 'market_data.db'):
+    """Store market data directly to SQLite database"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    try:
+        # Clear existing data
+        cursor.execute('DELETE FROM markets')
+        
+        # Parse percentage value
+        def parse_pct(val):
+            if val is None or val == 'N/A':
+                return None
+            if isinstance(val, str):
+                try:
+                    return float(val.replace('%', '').strip())
+                except (ValueError, AttributeError):
+                    return None
+            return float(val)
+        
+        # Insert market data
+        for row in market_data:
+            cursor.execute('''
+                INSERT INTO markets (
+                    category, symbol, name, current_price, currency,
+                    price_change_pct, perf_30m_pct, perf_1h_pct, perf_4h_pct,
+                    perf_6h_pct, perf_1d_pct, perf_1w_pct, perf_1m_pct, perf_3m_pct,
+                    perf_6m_pct, perf_ytd_pct, perf_1y_pct, perf_5y_pct,
+                    perf_10y_pct, market_status, type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                row.get('Category', ''),
+                row.get('Symbol', ''),
+                row.get('Name', ''),
+                parse_pct(row.get('Current Price')),
+                row.get('Currency', ''),
+                parse_pct(row.get('Price Change %')),
+                parse_pct(row.get('Perf % 30M')),
+                parse_pct(row.get('Perf % 1H')),
+                parse_pct(row.get('Perf % 4H')),
+                parse_pct(row.get('Perf % 6H')),
+                parse_pct(row.get('Perf % 1D')),
+                parse_pct(row.get('Perf % 1W')),
+                parse_pct(row.get('Perf % 1M')),
+                parse_pct(row.get('Perf % 3M')),
+                parse_pct(row.get('Perf % 6M')),
+                parse_pct(row.get('Perf % YTD')),
+                parse_pct(row.get('Perf % 1Y')),
+                parse_pct(row.get('Perf % 5Y')),
+                parse_pct(row.get('Perf % 10Y')),
+                row.get('Market Status', ''),
+                row.get('Type', '')
+            ))
+        
+        # Update metadata with last fetch time
+        cursor.execute('DELETE FROM metadata WHERE key = ?', ('last_fetch_time',))
+        cursor.execute(
+            'INSERT INTO metadata (key, value) VALUES (?, ?)',
+            ('last_fetch_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        )
+        
+        conn.commit()
+        print(f"✓ Stored {len(market_data)} markets to database")
+        
+    except Exception as e:
+        print(f"✗ Error storing to database: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
 
 
 def fetch_and_analyze_markets(api: CapitalAPI, categories: list) -> list:
@@ -90,6 +209,11 @@ def fetch_and_analyze_markets(api: CapitalAPI, categories: list) -> list:
                 'Current Price': snapshot.get('bid', 'N/A'),
                 'Currency': instrument.get('currency', 'N/A'),
                 'Price Change %': format_percentage(snapshot.get('percentageChange')),
+                'Perf % 30M': format_percentage(performance.get('perf_30m')),
+                'Perf % 1H': format_percentage(performance.get('perf_1h')),
+                'Perf % 4H': format_percentage(performance.get('perf_4h')),
+                'Perf % 6H': format_percentage(performance.get('perf_6h')),
+                'Perf % 1D': format_percentage(performance.get('perf_1d')),
                 'Perf % 1W': format_percentage(performance.get('perf_1w')),
                 'Perf % 1M': format_percentage(performance.get('perf_1m')),
                 'Perf % 3M': format_percentage(performance.get('perf_3m')),
@@ -133,6 +257,11 @@ def export_to_csv(data: list, filename: str):
         'Current Price',
         'Currency',
         'Price Change %',
+        'Perf % 30M',
+        'Perf % 1H',
+        'Perf % 4H',
+        'Perf % 6H',
+        'Perf % 1D',
         'Perf % 1W',
         'Perf % 1M',
         'Perf % 3M',
@@ -164,11 +293,15 @@ def main():
     print("="*60)
     print(f"Environment: {'DEMO' if config.USE_DEMO else 'LIVE'}")
     print(f"Categories: {', '.join(config.CATEGORIES)}")
-    print(f"Output file: {config.OUTPUT_FILENAME}")
+    print(f"Database: market_data.db (primary storage)")
     print("="*60)
     
+    # Initialize database
+    print("\nInitializing SQLite database...")
+    init_database('market_data.db')
+    
     # Initialize API client
-    print("\nInitializing API client...")
+    print("Initializing API client...")
     api = CapitalAPI(
         api_key=config.API_KEY,
         identifier=config.USERNAME,
@@ -186,8 +319,14 @@ def main():
     market_data = fetch_and_analyze_markets(api, config.CATEGORIES)
     end_time = datetime.now()
     
-    # Export to CSV
+    # Store to database (primary storage)
     if market_data:
+        print("\nStoring data to database...")
+        store_to_database(market_data, 'market_data.db')
+    
+    # Also export to CSV for backup
+    if market_data:
+        print("Exporting data to CSV (backup)...")
         export_to_csv(market_data, config.OUTPUT_FILENAME)
     
     # Print summary
@@ -198,27 +337,9 @@ def main():
     print(f"Total time: {duration:.2f} seconds")
     print(f"Markets processed: {len(market_data)}")
     print(f"Categories: {len(config.CATEGORIES)}")
+    print(f"Primary database: market_data.db")
+    print(f"Backup CSV: {config.OUTPUT_FILENAME}")
     print(f"{'='*60}\n")
-    
-    # Launch web viewer
-    print("Launching web viewer...")
-    print("Opening browser at http://localhost:5000")
-    import webbrowser
-    import threading
-    import subprocess
-    
-    # Start web server in background
-    def start_web_server():
-        subprocess.run([sys.executable, "web_viewer.py"], cwd=os.path.dirname(os.path.abspath(__file__)))
-    
-    server_thread = threading.Thread(target=start_web_server, daemon=True)
-    server_thread.start()
-    
-    # Wait a moment for server to start
-    time.sleep(2)
-    
-    # Open browser
-    webbrowser.open('http://localhost:5000')
     
     print("\nWeb viewer is running. Press Ctrl+C to stop.")
     try:
