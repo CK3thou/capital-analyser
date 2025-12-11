@@ -44,11 +44,6 @@ def init_database(db_path: str = 'market_data.db'):
             current_price REAL,
             currency TEXT,
             price_change_pct REAL,
-            perf_30m_pct REAL,
-            perf_1h_pct REAL,
-            perf_4h_pct REAL,
-            perf_6h_pct REAL,
-            perf_1d_pct REAL,
             perf_1w_pct REAL,
             perf_1m_pct REAL,
             perf_3m_pct REAL,
@@ -101,11 +96,10 @@ def store_to_database(market_data: list, db_path: str = 'market_data.db'):
             cursor.execute('''
                 INSERT INTO markets (
                     category, symbol, name, current_price, currency,
-                    price_change_pct, perf_30m_pct, perf_1h_pct, perf_4h_pct,
-                    perf_6h_pct, perf_1d_pct, perf_1w_pct, perf_1m_pct, perf_3m_pct,
+                    price_change_pct, perf_1w_pct, perf_1m_pct, perf_3m_pct,
                     perf_6m_pct, perf_ytd_pct, perf_1y_pct, perf_5y_pct,
                     perf_10y_pct, market_status, type
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 row.get('Category', ''),
                 row.get('Symbol', ''),
@@ -113,11 +107,6 @@ def store_to_database(market_data: list, db_path: str = 'market_data.db'):
                 parse_pct(row.get('Current Price')),
                 row.get('Currency', ''),
                 parse_pct(row.get('Price Change %')),
-                parse_pct(row.get('Perf % 30M')),
-                parse_pct(row.get('Perf % 1H')),
-                parse_pct(row.get('Perf % 4H')),
-                parse_pct(row.get('Perf % 6H')),
-                parse_pct(row.get('Perf % 1D')),
                 parse_pct(row.get('Perf % 1W')),
                 parse_pct(row.get('Perf % 1M')),
                 parse_pct(row.get('Perf % 3M')),
