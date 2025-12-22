@@ -11,6 +11,7 @@ from datetime import datetime
 from capital_analyzer import CapitalAPI
 import os
 import sys
+import database  # Import the new database module
 
 # Import configuration
 try:
@@ -156,6 +157,9 @@ def export_to_csv(data: list, filename: str):
     except Exception as e:
         print(f"✗ Error exporting to CSV: {str(e)}")
 
+# Removed export_to_csv function usage in main, but keeping definition if needed for legacy or debugging
+# Ideally, we can remove it entirely if we are fully committed to SQLite.
+# For now, I will leave the function definition but it is not called.
 
 def main():
     """Main execution function"""
@@ -164,7 +168,7 @@ def main():
     print("="*60)
     print(f"Environment: {'DEMO' if config.USE_DEMO else 'LIVE'}")
     print(f"Categories: {', '.join(config.CATEGORIES)}")
-    print(f"Output file: {config.OUTPUT_FILENAME}")
+    print(f"Output: SQLite Database")
     print("="*60)
     
     # Initialize API client
@@ -186,9 +190,11 @@ def main():
     market_data = fetch_and_analyze_markets(api, config.CATEGORIES)
     end_time = datetime.now()
     
-    # Export to CSV
+    # Export to Database
     if market_data:
-        export_to_csv(market_data, config.OUTPUT_FILENAME)
+        print(f"\nSaving {len(market_data)} records to database...")
+        database.save_market_data(market_data)
+        print("✓ Data saved to SQLite database")
     
     # Print summary
     duration = (end_time - start_time).total_seconds()

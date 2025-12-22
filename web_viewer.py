@@ -3,46 +3,25 @@ Web-based viewer for Capital.com market analysis results
 """
 
 from flask import Flask, render_template, jsonify
-import csv
 import os
 from datetime import datetime
+import database  # Import database module
 
 app = Flask(__name__)
 
 def load_market_data():
-    """Load market data from CSV file"""
-    csv_file = 'capital_markets_analysis.csv'
-    
-    if not os.path.exists(csv_file):
-        return []
-    
-    markets = []
-    with open(csv_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            markets.append(row)
-    
-    return markets
+    """Load market data from SQLite database"""
+    return database.load_market_data_list()
 
 def get_file_stats():
-    """Get statistics about the data file"""
-    csv_file = 'capital_markets_analysis.csv'
-    
-    if not os.path.exists(csv_file):
-        return None
-    
-    stats = {
-        'file_size': os.path.getsize(csv_file),
-        'modified_time': datetime.fromtimestamp(os.path.getmtime(csv_file)).strftime('%Y-%m-%d %H:%M:%S'),
-        'exists': True
-    }
-    
-    return stats
+    """Get statistics about the database"""
+    return database.get_db_stats()
 
 @app.route('/')
 def index():
     """Main page"""
-    return render_template('index.html')
+    stats = get_file_stats()
+    return render_template('index.html', stats=stats)
 
 @app.route('/api/markets')
 def get_markets():

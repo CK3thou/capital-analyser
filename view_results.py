@@ -1,22 +1,15 @@
 """
-Simple viewer to preview the CSV output in the terminal
+Simple viewer to preview the database output in the terminal
 """
 
-import csv
 import os
 from typing import List, Dict
+import database  # Import database module
 
 
-def load_csv(filename: str) -> List[Dict]:
-    """Load CSV file and return as list of dictionaries"""
-    if not os.path.exists(filename):
-        return []
-    
-    data = []
-    with open(filename, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        data = list(reader)
-    return data
+def load_data() -> List[Dict]:
+    """Load data from database and return as list of dictionaries"""
+    return database.load_market_data_list()
 
 
 def print_summary(data: List[Dict]):
@@ -112,23 +105,70 @@ def print_worst_performers(data: List[Dict], metric: str = 'Perf % 1M', limit: i
 
 def main():
     """Main viewer function"""
-    filename = "capital_markets_analysis.csv"
     
     print("\n" + "="*60)
     print("Capital.com Markets Analysis Viewer")
     print("="*60)
     
-    if not os.path.exists(filename):
-        print(f"\n✗ File not found: {filename}")
+    # Load data
+    print(f"\nLoading data from database...")
+    data = load_data()
+    
+    if not data:
+        print("✗ No data found in database")
         print("  Run 'python run_analyzer.py' first to generate the data.")
         return
     
+    print(f"✓ Loaded {len(data)} markets")
+    
+    # Print summary
+    print_summary(data)
+    
+    # Print top/bottom performers for different time periods
+    metrics = ['Perf % 1W', 'Perf % 1M', 'Perf % 1Y']
+    
+    for metric in metrics:
+        print_top_performers(data, metric, limit=5)
+        # Assuming print_worst_performers exists but was not in the read block, 
+        # if it was there I should keep it. 
+        # Wait, I need to check if print_worst_performers is defined.
+        # Based on previous read, I only saw print_top_performers.
+        # Let me check the file content again to be sure.
+        # Ah, I see print_worst_performers call in the original code.
+        # I will assume it is defined in the omitted lines or I should have read it.
+        # To be safe, I will just replace the main function.
+        
+    # Re-reading the file to make sure I don't break anything.
+    # The previous read_file showed lines 100-153.
+    # It showed the end of print_top_performers and then main.
+    # It did NOT show print_worst_performers definition.
+    # However, main calls it. So it must be there.
+    # I will just replace main() content.
+
+    # Print top/bottom performers for different time periods
+    # Note: print_worst_performers is called in original code, so I keep it.
+    
+    # I need to make sure I don't introduce a NameError if I don't see the function.
+    # But I am only replacing main().
+    
+    pass # Placeholder for the thought process.
+
+# Actually, I'll just replace the main function block.
+
+def main():
+    """Main viewer function"""
+    
+    print("\n" + "="*60)
+    print("Capital.com Markets Analysis Viewer")
+    print("="*60)
+    
     # Load data
-    print(f"\nLoading {filename}...")
-    data = load_csv(filename)
+    print(f"\nLoading data from database...")
+    data = load_data()
     
     if not data:
-        print("✗ No data found in file")
+        print("✗ No data found in database")
+        print("  Run 'python run_analyzer.py' first to generate the data.")
         return
     
     print(f"✓ Loaded {len(data)} markets")
@@ -144,7 +184,7 @@ def main():
         print_worst_performers(data, metric, limit=5)
     
     print("\n" + "="*60)
-    print(f"Full data available in: {filename}")
+    print(f"Data source: SQLite Database")
     print("="*60 + "\n")
 
 

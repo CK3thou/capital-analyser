@@ -9,6 +9,7 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+import database  # Import database module
 
 st.set_page_config(
     page_title="Capital.com Market Analyzer",
@@ -20,22 +21,54 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
     <style>
+    /* Material Design-inspired CSS */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+    
+    html, body, [class*="css"]  {
+        font-family: 'Roboto', sans-serif;
+    }
+    
+    .stApp {
+        background-color: #f5f5f5;
+    }
+    
+    /* Card styling for metrics */
+    div[data-testid="stMetric"] {
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: box-shadow 0.3s ease;
+    }
+    
+    div[data-testid="stMetric"]:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Headers */
+    h1, h2, h3 {
+        color: #1976d2; /* Material Blue */
+        font-weight: 500;
+    }
+
     .main {
         padding: 2rem;
     }
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1976d2 0%, #64b5f6 100%); /* Material Blue Gradient */
         padding: 1.5rem;
-        border-radius: 10px;
+        border-radius: 8px;
         color: white;
         text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
     .positive {
-        color: #00D084;
+        color: #4caf50; /* Material Green */
         font-weight: bold;
     }
     .negative {
-        color: #FF4B4B;
+        color: #f44336; /* Material Red */
         font-weight: bold;
     }
     </style>
@@ -43,18 +76,8 @@ st.markdown("""
 
 @st.cache_data
 def load_market_data():
-    """Load market data from CSV file"""
-    csv_file = 'capital_markets_analysis.csv'
-    
-    if not os.path.exists(csv_file):
-        return None
-    
-    try:
-        df = pd.read_csv(csv_file)
-        return df
-    except Exception as e:
-        st.error(f"Error loading CSV: {str(e)}")
-        return None
+    """Load market data from SQLite database"""
+    return database.load_market_data_df()
 
 def initialize_session_state():
     """Initialize session state variables"""
@@ -90,9 +113,14 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Get last updated time
+    last_updated = database.get_last_updated()
+    if not last_updated:
+        last_updated = "Unknown"
+    
     # Header
     st.title("📊 Capital.com Market Analyzer")
-    st.markdown("Real-time market performance tracking across multiple asset classes")
+    st.markdown(f"Real-time market performance tracking across multiple asset classes | **Last Updated:** {last_updated}")
     
     # Load data
     df = load_market_data()
@@ -103,7 +131,7 @@ def main():
         ### To populate data:
         1. Configure your API credentials in `config.py`
         2. Run `python run_analyzer.py` to fetch market data
-        3. This will create `capital_markets_analysis.csv`
+        3. This will populate the SQLite database
         4. Refresh this page to see the data
         """)
         return

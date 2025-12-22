@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Capital.com Market Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,21 +14,21 @@
         }
 
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1e40af;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg-dark: #0f172a;
-            --bg-card: #1e293b;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --border: #334155;
+            --primary: #1976d2; /* Material Blue */
+            --primary-dark: #1565c0;
+            --success: #4caf50; /* Material Green */
+            --danger: #f44336; /* Material Red */
+            --warning: #ff9800; /* Material Orange */
+            --bg-dark: #121212; /* Material Dark Background */
+            --bg-card: #1e1e1e; /* Material Dark Surface */
+            --text-primary: #ffffff;
+            --text-secondary: #b0bec5;
+            --border: #37474f;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-dark);
             color: var(--text-primary);
             min-height: 100vh;
             padding: 20px;
@@ -354,8 +356,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>📊 Capital.com Market Analyzer</h1>
-            <p class="subtitle">Real-time market performance tracking across multiple asset classes</p>
+            <h1>Capital.com Market Analyzer</h1>
+            <p class="subtitle">Real-time market performance tracking across multiple asset classes | Last Updated: {{ stats.modified_time if stats else 'Unknown' }}</p>
         </header>
 
         <div class="stats-grid" id="statsGrid">
