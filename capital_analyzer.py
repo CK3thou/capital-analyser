@@ -333,7 +333,7 @@ class CapitalAPI:
     
     def calculate_performance(self, epic: str) -> Dict[str, Optional[float]]:
         """
-        Calculate performance metrics for a market
+        Calculate performance metrics for a market (historical only)
         
         Returns:
             Dictionary with performance percentages for various time periods
@@ -348,7 +348,6 @@ class CapitalAPI:
             'perf_1y': None,
             'perf_5y': None,
             'perf_10y': None,
-            'perf_all_time': None,
         }
         
         # Get current market snapshot first
@@ -360,13 +359,13 @@ class CapitalAPI:
         # Calculate historical performance
         now = datetime.now()
         
-        # Helper function to get price at a specific date
-        def get_price_at_date(days_ago: int) -> Optional[float]:
+        # Helper function to get price at a specific date/time
+        def get_price_at_datetime(days_ago: int, resolution: str = "DAY") -> Optional[float]:
             target_date = now - timedelta(days=days_ago)
             from_str = target_date.strftime("%Y-%m-%dT00:00:00")
             to_str = (target_date + timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
             
-            prices = self.get_historical_prices(epic, resolution="DAY", 
+            prices = self.get_historical_prices(epic, resolution=resolution, 
                                                from_date=from_str, 
                                                to_date=to_str, 
                                                max_points=5)
@@ -382,43 +381,43 @@ class CapitalAPI:
         
         if current_price:
             # 1 Week (7 days)
-            old_price = get_price_at_date(7)
+            old_price = get_price_at_datetime(days_ago=7)
             if old_price and old_price > 0:
                 performance['perf_1w'] = ((current_price - old_price) / old_price) * 100
             
             # 1 Month (30 days)
-            old_price = get_price_at_date(30)
+            old_price = get_price_at_datetime(days_ago=30)
             if old_price and old_price > 0:
                 performance['perf_1m'] = ((current_price - old_price) / old_price) * 100
             
             # 3 Months (90 days)
-            old_price = get_price_at_date(90)
+            old_price = get_price_at_datetime(days_ago=90)
             if old_price and old_price > 0:
                 performance['perf_3m'] = ((current_price - old_price) / old_price) * 100
             
             # 6 Months (180 days)
-            old_price = get_price_at_date(180)
+            old_price = get_price_at_datetime(days_ago=180)
             if old_price and old_price > 0:
                 performance['perf_6m'] = ((current_price - old_price) / old_price) * 100
             
             # YTD (from Jan 1st of current year)
             ytd_days = (now - datetime(now.year, 1, 1)).days
-            old_price = get_price_at_date(ytd_days)
+            old_price = get_price_at_datetime(days_ago=ytd_days)
             if old_price and old_price > 0:
                 performance['perf_ytd'] = ((current_price - old_price) / old_price) * 100
             
             # 1 Year (365 days)
-            old_price = get_price_at_date(365)
+            old_price = get_price_at_datetime(days_ago=365)
             if old_price and old_price > 0:
                 performance['perf_1y'] = ((current_price - old_price) / old_price) * 100
             
             # 5 Years (1825 days)
-            old_price = get_price_at_date(1825)
+            old_price = get_price_at_datetime(days_ago=1825)
             if old_price and old_price > 0:
                 performance['perf_5y'] = ((current_price - old_price) / old_price) * 100
             
             # 10 Years (3650 days)
-            old_price = get_price_at_date(3650)
+            old_price = get_price_at_datetime(days_ago=3650)
             if old_price and old_price > 0:
                 performance['perf_10y'] = ((current_price - old_price) / old_price) * 100
         
