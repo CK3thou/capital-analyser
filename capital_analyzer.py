@@ -340,6 +340,7 @@ class CapitalAPI:
         """
         performance = {
             'price_change_pct': None,
+            'perf_1d': None,
             'perf_1w': None,
             'perf_1m': None,
             'perf_3m': None,
@@ -380,6 +381,11 @@ class CapitalAPI:
             current_price = details['snapshot'].get('bid')
         
         if current_price:
+            # 1 Day (1 day)
+            old_price = get_price_at_datetime(days_ago=1)
+            if old_price and old_price > 0:
+                performance['perf_1d'] = ((current_price - old_price) / old_price) * 100
+            
             # 1 Week (7 days)
             old_price = get_price_at_datetime(days_ago=7)
             if old_price and old_price > 0:
