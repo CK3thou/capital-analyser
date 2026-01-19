@@ -18,10 +18,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS - Dark Theme
 st.markdown("""
     <style>
-    /* Material Design-inspired CSS */
+    /* Material Design-inspired Dark Theme */
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     
     html, body, [class*="css"]  {
@@ -29,47 +29,83 @@ st.markdown("""
     }
     
     .stApp {
-        background-color: #f5f5f5;
+        background-color: #0e1117;
+        color: #e6edf3;
+    }
+    
+    /* Main content area */
+    [data-testid="stAppViewContainer"] {
+        background-color: #0e1117;
+    }
+    
+    [data-testid="stSidebar"] {
+        background-color: #161b22;
     }
     
     /* Card styling for metrics */
     div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
+        background-color: #161b22;
+        border: 1px solid #30363d;
         padding: 15px;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         transition: box-shadow 0.3s ease;
     }
     
     div[data-testid="stMetric"]:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        border-color: #58a6ff;
     }
     
     /* Headers */
     h1, h2, h3 {
-        color: #1976d2; /* Material Blue */
+        color: #58a6ff;
         font-weight: 500;
     }
 
     .main {
         padding: 2rem;
     }
+    
     .metric-card {
-        background: linear-gradient(135deg, #1976d2 0%, #64b5f6 100%); /* Material Blue Gradient */
+        background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
         padding: 1.5rem;
         border-radius: 8px;
         color: white;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.4);
     }
+    
     .positive {
-        color: #4caf50; /* Material Green */
+        color: #3fb950;
         font-weight: bold;
     }
+    
     .negative {
-        color: #f44336; /* Material Red */
+        color: #f85149;
         font-weight: bold;
+    }
+    
+    /* Text styling */
+    p, label, span {
+        color: #e6edf3;
+    }
+    
+    /* Input fields */
+    input, select, textarea {
+        background-color: #161b22 !important;
+        color: #e6edf3 !important;
+        border-color: #30363d !important;
+    }
+    
+    /* Buttons */
+    button {
+        background-color: #238636 !important;
+        color: white !important;
+    }
+    
+    button:hover {
+        background-color: #2ea043 !important;
     }
     </style>
 """, unsafe_allow_html=True)
