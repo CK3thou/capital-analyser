@@ -31,6 +31,11 @@ def init_db():
             current_price REAL,
             currency TEXT,
             price_change_pct REAL,
+            perf_30m_pct REAL,
+            perf_1h_pct REAL,
+            perf_4h_pct REAL,
+            perf_6h_pct REAL,
+            perf_1d_pct REAL,
             perf_1w_pct REAL,
             perf_1m_pct REAL,
             perf_3m_pct REAL,
@@ -84,10 +89,11 @@ def import_csv_to_db(csv_file):
             cursor.execute('''
                 INSERT INTO markets (
                     category, symbol, name, current_price, currency,
-                    price_change_pct, perf_1w_pct, perf_1m_pct, perf_3m_pct,
+                    price_change_pct, perf_30m_pct, perf_1h_pct, perf_4h_pct,
+                    perf_6h_pct, perf_1d_pct, perf_1w_pct, perf_1m_pct, perf_3m_pct,
                     perf_6m_pct, perf_ytd_pct, perf_1y_pct, perf_5y_pct,
                     perf_10y_pct, market_status, type
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 row.get('Category', ''),
                 row.get('Symbol', ''),
@@ -95,6 +101,11 @@ def import_csv_to_db(csv_file):
                 parse_pct(row.get('Current Price', None)),
                 row.get('Currency', ''),
                 parse_pct(row.get('Price Change %', None)),
+                parse_pct(row.get('Perf % 30M', None)),
+                parse_pct(row.get('Perf % 1H', None)),
+                parse_pct(row.get('Perf % 4H', None)),
+                parse_pct(row.get('Perf % 6H', None)),
+                parse_pct(row.get('Perf % 1D', None)),
                 parse_pct(row.get('Perf % 1W', None)),
                 parse_pct(row.get('Perf % 1M', None)),
                 parse_pct(row.get('Perf % 3M', None)),

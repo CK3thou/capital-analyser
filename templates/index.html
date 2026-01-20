@@ -504,6 +504,11 @@
                             <th onclick="sortTable('Name')">Name <span class="sort-indicator">↕</span></th>
                             <th onclick="sortTable('Current Price')">Current Price <span class="sort-indicator">↕</span></th>
                             <th onclick="sortTable('Currency')">Currency <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_30m')">30M <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_1h')">1H <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_4h')">4H <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_6h')">6H <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable('perf_1d')">1D <span class="sort-indicator">↕</span></th>
                             <th onclick="sortTable('perf_1w')">1W <span class="sort-indicator">↕</span></th>
                             <th onclick="sortTable('perf_1m')">1M <span class="sort-indicator">↕</span></th>
                             <th onclick="sortTable('perf_3m')">3M <span class="sort-indicator">↕</span></th>
@@ -515,7 +520,7 @@
                         </tr>
                     </thead>
                     <tbody id="marketTable">
-                        <tr><td colspan="13" class="loading"><span class="spinner"></span>Loading data...</td></tr>
+                        <tr><td colspan="18" class="loading"><span class="spinner"></span>Loading data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -592,8 +597,9 @@
             const headers = document.querySelectorAll('th');
             const columnMap = {
                 'Category': 0, 'Symbol': 1, 'Name': 2, 'Current Price': 3, 'Currency': 4,
-                'perf_1w': 5, 'perf_1m': 6, 'perf_3m': 7, 'perf_6m': 8, 'perf_ytd': 9,
-                'perf_1y': 10, 'perf_5y': 11, 'perf_10y': 12
+                'perf_30m': 5, 'perf_1h': 6, 'perf_4h': 7, 'perf_6h': 8, 'perf_1d': 9,
+                'perf_1w': 10, 'perf_1m': 11, 'perf_3m': 12, 'perf_6m': 13, 'perf_ytd': 14,
+                'perf_1y': 15, 'perf_5y': 16, 'perf_10y': 17
             };
 
             if (columnMap[columnKey] !== undefined) {
@@ -681,7 +687,11 @@
             }
 
             tbody.innerHTML = markets.map(m => {
+<<<<<<< HEAD
                 const perfColumns = ['Perf % 1D', 'Perf % 1W', 'Perf % 1M', 'Perf % 3M', 'Perf % 6M', 'Perf % YTD', 'Perf % 1Y', 'Perf % 5Y', 'Perf % 10Y'];
+=======
+                const timeframes = ['perf_30m', 'perf_1h', 'perf_4h', 'perf_6h', 'perf_1d', 'perf_1w', 'perf_1m', 'perf_3m', 'perf_6m', 'perf_ytd', 'perf_1y', 'perf_5y', 'perf_10y'];
+>>>>>>> parent of cc82c72 (daily perfs timings)
                 let timeframeHtml = '';
 
                 perfColumns.forEach(col => {
