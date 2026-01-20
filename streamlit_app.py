@@ -10,6 +10,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 import database  # Import database module
+from capital_analyzer import CapitalAPI
+import config
 
 st.set_page_config(
     page_title="Capital.com Market Analyzer",
@@ -110,6 +112,47 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def load_market_data_from_api():
+    """Fetch fresh market data from Capital.com API"""
+    try:
+        api = CapitalAPI(
+            api_key=config.API_KEY,
+            identifier=config.USERNAME,
+            password=config.PASSWORD,
+            demo=config.USE_DEMO
+        )
+        
+        if not api.create_session():
+            st.error("Failed to create API session")
+            return None
+        
+        all_markets = []
+        
+        for category in config.CATEGORIES:
+            try:
+                markets = api.get_markets_by_category(category, limit=20)
+                if markets:
+                    for market in markets:
+                        market['Category'] = category
+                        all_markets.append(market)
+            except Exception as e:
+                st.warning(f"Error fetching {category}: {str(e)}")
+        
+        api.close_session()
+        
+        # Convert to DataFrame
+        if all_markets:
+            df = pd.DataFrame(all_markets)
+            # Store in database for persistence
+            database.save_market_data(df)
+            return df
+        else:
+            return None
+            
+    except Exception as e:
+        st.error(f"Error fetching API data: {str(e)}")
+        return None
+
 @st.cache_data
 def load_market_data():
     """Load market data from SQLite database"""
@@ -123,6 +166,8 @@ def initialize_session_state():
         st.session_state.selected_category = "All"
     if 'search_term' not in st.session_state:
         st.session_state.search_term = ""
+    if 'refresh_data' not in st.session_state:
+        st.session_state.refresh_data = False
 
 def parse_percentage(value):
     """Parse percentage string to float"""
@@ -149,17 +194,40 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Sidebar - Refresh Controls
+    with st.sidebar:
+        st.markdown("### 🔄 Data Control")
+        col_refresh1, col_refresh2 = st.columns(2)
+        
+        with col_refresh1:
+            if st.button("🔄 Refresh from API", use_container_width=True):
+                st.session_state.refresh_data = True
+                st.rerun()
+        
+        with col_refresh2:
+            if st.button("💾 Load from Cache", use_container_width=True):
+                st.session_state.refresh_data = False
+                st.cache_data.clear()
+                st.rerun()
+        
+        st.markdown("---")
+    
     # Get last updated time
     last_updated = database.get_last_updated()
     if not last_updated:
         last_updated = "Unknown"
     
+    # Fetch data based on user choice
+    if st.session_state.refresh_data:
+        with st.spinner("🔄 Fetching fresh data from API..."):
+            df = load_market_data_from_api()
+    else:
+        df = load_market_data()
+    
     # Header
     st.title("📊 Capital.com Market Analyzer")
-    st.markdown(f"Real-time market performance tracking across multiple asset classes | **Last Updated:** {last_updated}")
-    
-    # Load data
-    df = load_market_data()
+    data_source = "🔴 Live API" if st.session_state.refresh_data else "💾 Cached DB"
+    st.markdown(f"Real-time market performance tracking across multiple asset classes | **Data Source:** {data_source} | **Last Updated:** {last_updated}")
     
     if df is None or len(df) == 0:
         st.warning("⚠️ No data available")

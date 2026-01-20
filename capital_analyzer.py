@@ -340,13 +340,6 @@ class CapitalAPI:
         """
         performance = {
             'price_change_pct': None,
-<<<<<<< HEAD
-=======
-            'perf_30m': None,
-            'perf_1h': None,
-            'perf_4h': None,
-            'perf_6h': None,
->>>>>>> parent of cc82c72 (daily perfs timings)
             'perf_1d': None,
             'perf_1w': None,
             'perf_1m': None,
@@ -394,34 +387,8 @@ class CapitalAPI:
             current_price = details['snapshot'].get('bid')
         
         if current_price:
-<<<<<<< HEAD
             # 1 Day (1 day)
             old_price = get_price_at_datetime(days_ago=1)
-=======
-            # Intraday performance metrics (using minute resolution)
-            # 30 Minutes
-            old_price = get_price_at_datetime(minutes_ago=30, resolution="MINUTE")
-            if old_price and old_price > 0:
-                performance['perf_30m'] = ((current_price - old_price) / old_price) * 100
-            
-            # 1 Hour
-            old_price = get_price_at_datetime(minutes_ago=60, resolution="MINUTE")
-            if old_price and old_price > 0:
-                performance['perf_1h'] = ((current_price - old_price) / old_price) * 100
-            
-            # 4 Hours (240 minutes)
-            old_price = get_price_at_datetime(minutes_ago=240, resolution="MINUTE")
-            if old_price and old_price > 0:
-                performance['perf_4h'] = ((current_price - old_price) / old_price) * 100
-            
-            # 6 Hours (360 minutes)
-            old_price = get_price_at_datetime(minutes_ago=360, resolution="MINUTE")
-            if old_price and old_price > 0:
-                performance['perf_6h'] = ((current_price - old_price) / old_price) * 100
-            
-            # 1 Day
-            old_price = get_price_at_datetime(days_ago=1, resolution="DAY")
->>>>>>> parent of cc82c72 (daily perfs timings)
             if old_price and old_price > 0:
                 performance['perf_1d'] = ((current_price - old_price) / old_price) * 100
             
