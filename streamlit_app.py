@@ -9,6 +9,7 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+import database  # Import database module
 
 st.set_page_config(
     page_title="Capital.com Market Analyzer",
@@ -17,44 +18,102 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS - Dark Theme
 st.markdown("""
     <style>
+    /* Material Design-inspired Dark Theme */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+    
+    html, body, [class*="css"]  {
+        font-family: 'Roboto', sans-serif;
+    }
+    
+    .stApp {
+        background-color: #0e1117;
+        color: #e6edf3;
+    }
+    
+    /* Main content area */
+    [data-testid="stAppViewContainer"] {
+        background-color: #0e1117;
+    }
+    
+    [data-testid="stSidebar"] {
+        background-color: #161b22;
+    }
+    
+    /* Card styling for metrics */
+    div[data-testid="stMetric"] {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        transition: box-shadow 0.3s ease;
+    }
+    
+    div[data-testid="stMetric"]:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        border-color: #58a6ff;
+    }
+    
+    /* Headers */
+    h1, h2, h3 {
+        color: #58a6ff;
+        font-weight: 500;
+    }
+
     .main {
         padding: 2rem;
     }
+    
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
         padding: 1.5rem;
-        border-radius: 10px;
+        border-radius: 8px;
         color: white;
         text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.4);
     }
+    
     .positive {
-        color: #00D084;
+        color: #3fb950;
         font-weight: bold;
     }
+    
     .negative {
-        color: #FF4B4B;
+        color: #f85149;
         font-weight: bold;
+    }
+    
+    /* Text styling */
+    p, label, span {
+        color: #e6edf3;
+    }
+    
+    /* Input fields */
+    input, select, textarea {
+        background-color: #161b22 !important;
+        color: #e6edf3 !important;
+        border-color: #30363d !important;
+    }
+    
+    /* Buttons */
+    button {
+        background-color: #238636 !important;
+        color: white !important;
+    }
+    
+    button:hover {
+        background-color: #2ea043 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_market_data():
-    """Load market data from CSV file"""
-    csv_file = 'capital_markets_analysis.csv'
-    
-    if not os.path.exists(csv_file):
-        return None
-    
-    try:
-        df = pd.read_csv(csv_file)
-        return df
-    except Exception as e:
-        st.error(f"Error loading CSV: {str(e)}")
-        return None
+    """Load market data from SQLite database"""
+    return database.load_market_data_df()
 
 def initialize_session_state():
     """Initialize session state variables"""
@@ -90,9 +149,14 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Get last updated time
+    last_updated = database.get_last_updated()
+    if not last_updated:
+        last_updated = "Unknown"
+    
     # Header
     st.title("📊 Capital.com Market Analyzer")
-    st.markdown("Real-time market performance tracking across multiple asset classes")
+    st.markdown(f"Real-time market performance tracking across multiple asset classes | **Last Updated:** {last_updated}")
     
     # Load data
     df = load_market_data()
@@ -103,7 +167,7 @@ def main():
         ### To populate data:
         1. Configure your API credentials in `config.py`
         2. Run `python run_analyzer.py` to fetch market data
-        3. This will create `capital_markets_analysis.csv`
+        3. This will populate the SQLite database
         4. Refresh this page to see the data
         """)
         return

@@ -44,7 +44,7 @@ class CapitalAPI:
         self.session_expiry = None
         
     def create_session(self) -> bool:
-        """Create a new API session"""
+        """Create a new API session with retry logic"""
         url = f"{self.base_url}/session"
         headers = {
             "X-CAP-API-KEY": self.api_key,
@@ -56,22 +56,53 @@ class CapitalAPI:
             "encryptedPassword": False
         }
         
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            
-            if response.status_code == 200:
-                self.cst = response.headers.get('CST')
-                self.security_token = response.headers.get('X-SECURITY-TOKEN')
-                self.session_expiry = datetime.now() + timedelta(minutes=10)
-                print("[OK] Session created successfully")
-                return True
-            else:
-                print(f"[ERROR] Session creation failed: {response.status_code}")
-                print(f"Response: {response.text}")
-                return False
-        except Exception as e:
-            print(f"[ERROR] Error creating session: {str(e)}")
-            return False
+        # Retry logic for temporary server issues
+        max_retries = 3
+        retry_delay = 5  # seconds
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=10)
+                
+                if response.status_code == 200:
+                    self.cst = response.headers.get('CST')
+                    self.security_token = response.headers.get('X-SECURITY-TOKEN')
+                    self.session_expiry = datetime.now() + timedelta(minutes=10)
+                    print("[OK] Session created successfully")
+                    return True
+                elif response.status_code >= 500:
+                    # Server error - retry
+                    if attempt < max_retries:
+                        print(f"[WARNING] Server error {response.status_code} (attempt {attempt}/{max_retries}). Retrying in {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"[ERROR] Session creation failed after {max_retries} attempts: {response.status_code}")
+                        print(f"Response: {response.text}")
+                        return False
+                else:
+                    # Client error - don't retry
+                    print(f"[ERROR] Session creation failed: {response.status_code}")
+                    print(f"Response: {response.text}")
+                    return False
+            except requests.exceptions.Timeout:
+                if attempt < max_retries:
+                    print(f"[WARNING] Request timeout (attempt {attempt}/{max_retries}). Retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    print(f"[ERROR] Request timeout after {max_retries} attempts")
+                    return False
+            except Exception as e:
+                if attempt < max_retries:
+                    print(f"[WARNING] Error creating session: {str(e)} (attempt {attempt}/{max_retries}). Retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    print(f"[ERROR] Error creating session after {max_retries} attempts: {str(e)}")
+                    return False
+        
+        return False
     
     def ensure_session(self):
         """Ensure we have a valid session, create if needed"""
@@ -107,6 +138,7 @@ class CapitalAPI:
     def get_markets_by_category(self, category: str, limit: int = 100) -> List[Dict]:
         """
         Get all markets for a specific category by exploring the navigation hierarchy
+        with retry logic for transient failures
         
         Args:
             category: One of 'commodities', 'forex', 'indices', 'cryptocurrencies', 'shares', 'etf'
@@ -128,6 +160,9 @@ class CapitalAPI:
         nodes_to_visit = [node_id]
         visited_nodes = set()
         
+        max_retries = 3
+        retry_delay = 2
+        
         try:
             while nodes_to_visit:
                 current_node = nodes_to_visit.pop(0)
@@ -137,24 +172,53 @@ class CapitalAPI:
                 visited_nodes.add(current_node)
                 
                 url = f"{self.base_url}/marketnavigation/{current_node}"
-                response = requests.get(url, headers=headers, params={"limit": limit})
                 
-                if response.status_code != 200:
-                    continue
-                
-                data = response.json()
-                markets = data.get('markets', [])
-                sub_nodes = data.get('nodes', [])
-                
-                # Add markets from this node
-                if markets:
-                    all_markets.extend(markets)
-                
-                # Add sub-nodes to visit queue
-                for sub_node in sub_nodes:
-                    sub_id = sub_node.get('id')
-                    if sub_id and sub_id not in visited_nodes:
-                        nodes_to_visit.append(sub_id)
+                # Retry logic for individual node fetches
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        response = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            markets = data.get('markets', [])
+                            sub_nodes = data.get('nodes', [])
+                            
+                            # Add markets from this node
+                            if markets:
+                                all_markets.extend(markets)
+                            
+                            # Add sub-nodes to visit queue
+                            for sub_node in sub_nodes:
+                                sub_id = sub_node.get('id')
+                                if sub_id and sub_id not in visited_nodes:
+                                    nodes_to_visit.append(sub_id)
+                            break  # Success, move to next node
+                        
+                        elif response.status_code >= 500:
+                            # Server error - retry
+                            if attempt < max_retries:
+                                print(f"[WARNING] Server error {response.status_code} fetching {current_node} (attempt {attempt}/{max_retries}). Retrying...")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                print(f"[WARNING] Skipping {current_node} after {max_retries} failed attempts")
+                                break
+                        else:
+                            # Client error or other - skip this node
+                            break
+                    
+                    except requests.exceptions.Timeout:
+                        if attempt < max_retries:
+                            print(f"[WARNING] Timeout fetching {current_node} (attempt {attempt}/{max_retries}). Retrying...")
+                            time.sleep(retry_delay)
+                            continue
+                        else:
+                            print(f"[WARNING] Skipping {current_node} after timeout")
+                            break
+                    
+                    except Exception as e:
+                        print(f"[WARNING] Error fetching {current_node}: {str(e)}")
+                        break
                 
                 time.sleep(0.05)  # Rate limiting
             
@@ -175,20 +239,44 @@ class CapitalAPI:
             return []
     
     def get_market_details(self, epic: str) -> Optional[Dict]:
-        """Get detailed information for a specific market"""
+        """Get detailed information for a specific market with retry logic"""
         if not self.ensure_session():
             return None
         
         url = f"{self.base_url}/markets/{epic}"
         headers = self._get_auth_headers()
         
-        try:
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            return None
-        except:
-            return None
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    return response.json()
+                
+                elif response.status_code >= 500:
+                    if attempt < max_retries:
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"[WARNING] Could not fetch details for {epic} after {max_retries} attempts")
+                        return None
+                else:
+                    return None
+            
+            except requests.exceptions.Timeout:
+                if attempt < max_retries:
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    return None
+            
+            except Exception as e:
+                return None
+        
+        return None
     
     def get_historical_prices(self, epic: str, resolution: str = "DAY", 
                             from_date: Optional[str] = None, 
