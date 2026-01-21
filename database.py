@@ -8,7 +8,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-DB_FILE = 'capital_markets.db'
+DB_FILE = 'market_data.db'
 
 def get_db_connection():
     """Create a database connection"""
@@ -112,14 +112,16 @@ def load_market_data_df():
             'current_price': 'Current Price',
             'currency': 'Currency',
             'price_change_pct': 'Price Change %',
-            'perf_1w': 'Perf % 1W',
-            'perf_1m': 'Perf % 1M',
-            'perf_3m': 'Perf % 3M',
-            'perf_6m': 'Perf % 6M',
-            'perf_ytd': 'Perf % YTD',
-            'perf_1y': 'Perf % 1Y',
-            'perf_5y': 'Perf % 5Y',
-            'perf_10y': 'Perf % 10Y'
+            'perf_1w_pct': 'Perf % 1W',
+            'perf_1m_pct': 'Perf % 1M',
+            'perf_3m_pct': 'Perf % 3M',
+            'perf_6m_pct': 'Perf % 6M',
+            'perf_ytd_pct': 'Perf % YTD',
+            'perf_1y_pct': 'Perf % 1Y',
+            'perf_5y_pct': 'Perf % 5Y',
+            'perf_10y_pct': 'Perf % 10Y',
+            'market_status': 'Market Status',
+            'type': 'Type'
         }
         df = df.rename(columns=column_mapping)
         return df
@@ -153,14 +155,14 @@ def load_market_data_list():
                 'Current Price': item['current_price'],
                 'Currency': item['currency'],
                 'Price Change %': item['price_change_pct'],
-                'Perf % 1W': item['perf_1w'],
-                'Perf % 1M': item['perf_1m'],
-                'Perf % 3M': item['perf_3m'],
-                'Perf % 6M': item['perf_6m'],
-                'Perf % YTD': item['perf_ytd'],
-                'Perf % 1Y': item['perf_1y'],
-                'Perf % 5Y': item['perf_5y'],
-                'Perf % 10Y': item['perf_10y']
+                'Perf % 1W': item['perf_1w_pct'],
+                'Perf % 1M': item['perf_1m_pct'],
+                'Perf % 3M': item['perf_3m_pct'],
+                'Perf % 6M': item['perf_6m_pct'],
+                'Perf % YTD': item['perf_ytd_pct'],
+                'Perf % 1Y': item['perf_1y_pct'],
+                'Perf % 5Y': item['perf_5y_pct'],
+                'Perf % 10Y': item['perf_10y_pct']
             }
             result.append(mapped_item)
             
@@ -172,7 +174,7 @@ def load_market_data_list():
         conn.close()
 
 def get_last_updated():
-    """Get the timestamp of the last update"""
+    """Get the timestamp of the last update formatted nicely"""
     if not os.path.exists(DB_FILE):
         return None
         
@@ -181,7 +183,12 @@ def get_last_updated():
     try:
         cursor.execute("SELECT MAX(updated_at) FROM markets")
         result = cursor.fetchone()
-        return result[0] if result else None
+        if result and result[0]:
+            # Parse and format the timestamp
+            timestamp_str = result[0]
+            dt = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+            return dt.strftime('%B %d, %Y at %I:%M %p')
+        return None
     except Exception:
         return None
     finally:

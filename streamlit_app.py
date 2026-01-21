@@ -160,14 +160,10 @@ def load_market_data():
 
 def initialize_session_state():
     """Initialize session state variables"""
-    if 'data_loaded' not in st.session_state:
-        st.session_state.data_loaded = False
     if 'selected_category' not in st.session_state:
         st.session_state.selected_category = "All"
     if 'search_term' not in st.session_state:
         st.session_state.search_term = ""
-    if 'refresh_data' not in st.session_state:
-        st.session_state.refresh_data = False
 
 def parse_percentage(value):
     """Parse percentage string to float"""
@@ -194,40 +190,17 @@ def main():
     # Initialize session state
     initialize_session_state()
     
-    # Sidebar - Refresh Controls
-    with st.sidebar:
-        st.markdown("### 🔄 Data Control")
-        col_refresh1, col_refresh2 = st.columns(2)
-        
-        with col_refresh1:
-            if st.button("🔄 Refresh from API", use_container_width=True):
-                st.session_state.refresh_data = True
-                st.rerun()
-        
-        with col_refresh2:
-            if st.button("💾 Load from Cache", use_container_width=True):
-                st.session_state.refresh_data = False
-                st.cache_data.clear()
-                st.rerun()
-        
-        st.markdown("---")
-    
     # Get last updated time
     last_updated = database.get_last_updated()
     if not last_updated:
         last_updated = "Unknown"
     
-    # Fetch data based on user choice
-    if st.session_state.refresh_data:
-        with st.spinner("🔄 Fetching fresh data from API..."):
-            df = load_market_data_from_api()
-    else:
-        df = load_market_data()
+    # Load market data from database
+    df = load_market_data()
     
     # Header
     st.title("📊 Capital.com Market Analyzer")
-    data_source = "🔴 Live API" if st.session_state.refresh_data else "💾 Cached DB"
-    st.markdown(f"Real-time market performance tracking across multiple asset classes | **Data Source:** {data_source} | **Last Updated:** {last_updated}")
+    st.markdown(f"Real-time market performance tracking across multiple asset classes | **Data Source:** 💾 Database | **Last Updated:** {last_updated}")
     
     if df is None or len(df) == 0:
         st.warning("⚠️ No data available")
@@ -326,7 +299,7 @@ def main():
         'Category', 'Symbol', 'Name', 'Current Price', 'Currency', 
         'Price Change %', 'Perf % 1W', 'Perf % 1M', 'Perf % 3M', 
         'Perf % 6M', 'Perf % YTD', 'Perf % 1Y', 'Perf % 5Y', 
-        'Perf % 10Y', 'Market Status', 'Type'
+        'Perf % 10Y', 'Market Status'
     ]
     
     # Get available columns
