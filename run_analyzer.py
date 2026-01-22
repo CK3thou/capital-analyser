@@ -146,8 +146,8 @@ def fetch_and_analyze_markets(api: CapitalAPI, categories: list) -> list:
     # Category-specific limits
     CATEGORY_LIMITS = {
         'forex': 20,
-        'commodities': None,  # No limit - list all
-        'shares': 50,
+        'commodities': 20,  # Limit to 20
+        'shares': 20,
         'indices': 20,
         'etf': 20,
         'cryptocurrencies': 20,

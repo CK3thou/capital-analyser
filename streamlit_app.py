@@ -112,8 +112,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def format_percentage(value: float) -> str:
+    """Format percentage value for display"""
+    if value is None:
+        return "N/A"
+    return f"{value:.2f}%"
+
 def load_market_data_from_api():
-    """Fetch fresh market data from Capital.com API"""
+    """Fetch fresh market data from Capital.com API with full analysis"""
     try:
         api = CapitalAPI(
             api_key=config.API_KEY,
@@ -130,20 +136,65 @@ def load_market_data_from_api():
         
         for category in config.CATEGORIES:
             try:
+                st.status(f"📊 Fetching {category}...")
                 markets = api.get_markets_by_category(category, limit=20)
+                
                 if markets:
-                    for market in markets:
-                        market['Category'] = category
-                        all_markets.append(market)
+                    for idx, market in enumerate(markets, 1):
+                        epic = market.get('epic')
+                        name = market.get('instrumentName', epic)
+                        
+                        # Get market details
+                        details = api.get_market_details(epic)
+                        
+                        if not details:
+                            continue
+                        
+                        snapshot = details.get('snapshot', {})
+                        instrument = details.get('instrument', {})
+                        
+                        # Calculate performance metrics
+                        performance = api.calculate_performance(epic)
+                        
+                        # Compile complete market data with performance metrics
+                        market_data = {
+                            'Category': category.title(),
+                            'Symbol': epic,
+                            'Name': name,
+                            'Current Price': snapshot.get('bid', 'N/A'),
+                            'Currency': instrument.get('currency', 'N/A'),
+                            'Price Change %': format_percentage(snapshot.get('percentageChange')),
+                            'Perf % 1W': format_percentage(performance.get('perf_1w')),
+                            'Perf % 1M': format_percentage(performance.get('perf_1m')),
+                            'Perf % 3M': format_percentage(performance.get('perf_3m')),
+                            'Perf % 6M': format_percentage(performance.get('perf_6m')),
+                            'Perf % YTD': format_percentage(performance.get('perf_ytd')),
+                            'Perf % 1Y': format_percentage(performance.get('perf_1y')),
+                            'Perf % 5Y': format_percentage(performance.get('perf_5y')),
+                            'Perf % 10Y': format_percentage(performance.get('perf_10y')),
+                            'Market Status': snapshot.get('marketStatus', 'N/A'),
+                            'Type': instrument.get('type', category.upper()),
+                        }
+                        
+                        all_markets.append(market_data)
+                        
+                        # Rate limiting
+                        import time
+                        time.sleep(getattr(config, 'REQUEST_DELAY', 0.15))
+                        
+                        # Ping session every 20 requests
+                        if idx % 20 == 0:
+                            api.ping()
+                            
             except Exception as e:
                 st.warning(f"Error fetching {category}: {str(e)}")
         
         api.close_session()
         
-        # Convert to DataFrame
+        # Convert to DataFrame and store to database
         if all_markets:
             df = pd.DataFrame(all_markets)
-            # Store in database for persistence
+            # Store in database for persistence with today's timestamp
             database.save_market_data(df)
             return df
         else:
@@ -158,6 +209,19 @@ def load_market_data():
     """Load market data from SQLite database"""
     return database.load_market_data_df()
 
+def check_data_is_current():
+    """Check if cached data is from today"""
+    last_updated = database.get_last_updated()
+    if not last_updated:
+        return False
+    
+    try:
+        last_updated_date = datetime.strptime(last_updated, '%Y-%m-%d %H:%M:%S').date()
+        today = datetime.now().date()
+        return last_updated_date == today
+    except (ValueError, TypeError):
+        return False
+
 def initialize_session_state():
     """Initialize session state variables"""
     if 'data_loaded' not in st.session_state:
@@ -168,6 +232,8 @@ def initialize_session_state():
         st.session_state.search_term = ""
     if 'refresh_data' not in st.session_state:
         st.session_state.refresh_data = False
+    if 'auto_fetched' not in st.session_state:
+        st.session_state.auto_fetched = False
 
 def parse_percentage(value):
     """Parse percentage string to float"""
@@ -194,6 +260,13 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Check if data is current and auto-fetch if needed (only once per session)
+    if not st.session_state.auto_fetched:
+        is_current = check_data_is_current()
+        if not is_current:
+            st.session_state.refresh_data = True
+        st.session_state.auto_fetched = True
+    
     # Sidebar - Refresh Controls
     with st.sidebar:
         st.markdown("### 🔄 Data Control")
@@ -217,16 +290,24 @@ def main():
     if not last_updated:
         last_updated = "Unknown"
     
-    # Fetch data based on user choice
+    # Fetch data based on user choice (or auto-fetch if not current)
     if st.session_state.refresh_data:
         with st.spinner("🔄 Fetching fresh data from API..."):
             df = load_market_data_from_api()
+            if df is not None:
+                st.session_state.refresh_data = False  # Reset flag after successful fetch
     else:
         df = load_market_data()
     
     # Header
     st.title("📊 Capital.com Market Analyzer")
-    data_source = "🔴 Live API" if st.session_state.refresh_data else "💾 Cached DB"
+    
+    # Determine data source status
+    if st.session_state.refresh_data:
+        data_source = "🔴 Live API (Fetched Now)"
+    else:
+        data_source = "💾 Cached DB (Today's Data)"
+    
     st.markdown(f"Real-time market performance tracking across multiple asset classes | **Data Source:** {data_source} | **Last Updated:** {last_updated}")
     
     if df is None or len(df) == 0:
