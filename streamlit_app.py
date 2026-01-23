@@ -114,6 +114,26 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def should_fetch_fresh_data():
+    """Check if we should fetch fresh data based on last fetch date"""
+    try:
+        last_updated = database.get_last_updated()
+        if not last_updated:
+            return True  # No data exists, fetch fresh data
+        
+        # Parse the last updated timestamp
+        last_fetch_date = datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S").date()
+        today = datetime.now().date()
+        
+        # Only fetch if it's a new day
+        if last_fetch_date < today:
+            return True
+        else:
+            return False  # Same day, use cached data
+    except Exception as e:
+        st.warning(f"Could not determine last fetch date: {str(e)}")
+        return True  # Default to fetching if we can't determine
+
 def run_analyzer():
     """Run run_analyzer.py to fetch fresh market data"""
     try:
@@ -124,12 +144,12 @@ def run_analyzer():
         analyzer_script = os.path.join(script_dir, 'run_analyzer.py')
         
         # Run the analyzer script and wait for completion
-        # Timeout set to 30 minutes to accommodate large data fetches
+        # Timeout set to 1 hour to accommodate large data fetches
         result = subprocess.run(
             [sys.executable, analyzer_script],
             capture_output=True,
             text=True,
-            timeout=1800  # 30 minute timeout
+            timeout=3600  # 1 hour timeout
         )
         
         if result.returncode == 0:
@@ -146,7 +166,7 @@ def run_analyzer():
                     st.text(result.stdout)
             
     except subprocess.TimeoutExpired:
-        st.error("✗ Analyzer took too long (timeout after 30 minutes). Check your network connection and API credentials.")
+        st.error("✗ Analyzer took too long (timeout after 1 hour). Check your network connection and API credentials.")
     except FileNotFoundError:
         st.error("✗ run_analyzer.py not found in the same directory")
     except Exception as e:
@@ -230,12 +250,17 @@ def main():
     # Initialize session state
     initialize_session_state()
     
-    # Run analyzer first to fetch fresh data
+    # Display header
     st.header("📊 Capital.com Market Analyzer")
-    st.markdown("Starting up - fetching latest market data...")
     
-    with st.spinner("Fetching market data from Capital.com API..."):
-        run_analyzer()
+    # Check if we need to fetch fresh data
+    if should_fetch_fresh_data():
+        st.markdown("Starting up - fetching latest market data...")
+        with st.spinner("Fetching market data from Capital.com API..."):
+            run_analyzer()
+    else:
+        st.markdown("Using cached market data from today...")
+        st.info("ℹ️ Data was already fetched today. Run again tomorrow for fresh data, or manually delete the database to force a fresh fetch.")
     
     # Get last updated time
     last_updated = database.get_last_updated()
