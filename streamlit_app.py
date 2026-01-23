@@ -9,6 +9,8 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+import subprocess
+import sys
 import database  # Import database module
 from capital_analyzer import CapitalAPI
 import config
@@ -112,6 +114,44 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def run_analyzer():
+    """Run run_analyzer.py to fetch fresh market data"""
+    try:
+        st.info("🔄 Fetching fresh market data from Capital.com (this may take several minutes)...")
+        
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        analyzer_script = os.path.join(script_dir, 'run_analyzer.py')
+        
+        # Run the analyzer script and wait for completion
+        # Timeout set to 30 minutes to accommodate large data fetches
+        result = subprocess.run(
+            [sys.executable, analyzer_script],
+            capture_output=True,
+            text=True,
+            timeout=1800  # 30 minute timeout
+        )
+        
+        if result.returncode == 0:
+            st.success("✓ Market data fetched and database updated successfully!")
+            # Show analyzer output for debugging
+            if result.stdout:
+                with st.expander("Analyzer Details"):
+                    st.text(result.stdout)
+        else:
+            st.error(f"✗ Error running analyzer:\n{result.stderr}")
+            # Show stdout for context
+            if result.stdout:
+                with st.expander("Analyzer Output"):
+                    st.text(result.stdout)
+            
+    except subprocess.TimeoutExpired:
+        st.error("✗ Analyzer took too long (timeout after 30 minutes). Check your network connection and API credentials.")
+    except FileNotFoundError:
+        st.error("✗ run_analyzer.py not found in the same directory")
+    except Exception as e:
+        st.error(f"✗ Unexpected error running analyzer: {str(e)}")
+
 def load_market_data_from_api():
     """Fetch fresh market data from Capital.com API"""
     try:
@@ -190,6 +230,13 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Run analyzer first to fetch fresh data
+    st.header("📊 Capital.com Market Analyzer")
+    st.markdown("Starting up - fetching latest market data...")
+    
+    with st.spinner("Fetching market data from Capital.com API..."):
+        run_analyzer()
+    
     # Get last updated time
     last_updated = database.get_last_updated()
     if not last_updated:
@@ -198,8 +245,7 @@ def main():
     # Load market data from database
     df = load_market_data()
     
-    # Header
-    st.title("📊 Capital.com Market Analyzer")
+    # Display subtitle
     st.markdown(f"Real-time market performance tracking across multiple asset classes | **Data Source:** 💾 Database | **Last Updated:** {last_updated}")
     
     if df is None or len(df) == 0:

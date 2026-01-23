@@ -18,7 +18,7 @@ import sys
 try:
     import config
 except ImportError:
-    print("✗ config.py not found!")
+    print("[ERROR] config.py not found!")
     print("Please copy config_template.py to config.py and fill in your credentials.")
     sys.exit(1)
 
@@ -68,7 +68,7 @@ def init_database(db_path: str = 'market_data.db'):
     
     conn.commit()
     conn.close()
-    print(f"✓ Database initialized at {db_path}")
+    print(f"[OK] Database initialized at {db_path}")
 
 
 def store_to_database(market_data: list, db_path: str = 'market_data.db'):
@@ -127,10 +127,10 @@ def store_to_database(market_data: list, db_path: str = 'market_data.db'):
         )
         
         conn.commit()
-        print(f"✓ Stored {len(market_data)} markets to database")
+        print(f"[OK] Stored {len(market_data)} markets to database")
         
     except Exception as e:
-        print(f"✗ Error storing to database: {e}")
+        print(f"[ERROR] Error storing to database: {e}")
         conn.rollback()
     finally:
         conn.close()
@@ -226,7 +226,7 @@ def fetch_and_analyze_markets(api: CapitalAPI, categories: list) -> list:
                 api.ping()
     
     print(f"\n{'='*60}")
-    print(f"✓ Completed! Processed {total_markets} markets across {len(categories)} categories")
+    print(f"[OK] Completed! Processed {total_markets} markets across {len(categories)} categories")
     print(f"{'='*60}\n")
     
     return all_data
@@ -235,7 +235,7 @@ def fetch_and_analyze_markets(api: CapitalAPI, categories: list) -> list:
 def export_to_csv(data: list, filename: str):
     """Export market data to CSV file"""
     if not data:
-        print("✗ No data to export")
+        print("[ERROR] No data to export")
         return
     
     # Define column order
@@ -269,10 +269,10 @@ def export_to_csv(data: list, filename: str):
             writer.writeheader()
             writer.writerows(data)
         
-        print(f"✓ Data exported to: {filename}")
+        print(f"[OK] Data exported to: {filename}")
         print(f"  Total rows: {len(data)}")
     except Exception as e:
-        print(f"✗ Error exporting to CSV: {str(e)}")
+        print(f"[ERROR] Error exporting to CSV: {str(e)}")
 
 
 def main():
@@ -300,7 +300,7 @@ def main():
     
     # Create session
     if not api.create_session():
-        print("✗ Failed to create session. Please check your credentials.")
+        print("[ERROR] Failed to create session. Please check your credentials.")
         return
     
     # Fetch and analyze markets
@@ -343,8 +343,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n✗ Process interrupted by user")
+        print("\n\n[ERROR] Process interrupted by user")
     except Exception as e:
-        print(f"\n✗ Unexpected error: {str(e)}")
+        print(f"\n[ERROR] Unexpected error: {str(e)}")
         import traceback
         traceback.print_exc()
