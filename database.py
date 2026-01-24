@@ -43,6 +43,15 @@ def init_db():
     )
     ''')
     
+    # Create metadata table for storing fetch timestamps and other metadata
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -181,13 +190,12 @@ def get_last_updated():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT MAX(updated_at) FROM markets")
+        # Query the metadata table for the last_fetch_time (set by run_analyzer.py)
+        cursor.execute("SELECT value FROM metadata WHERE key = 'last_fetch_time'")
         result = cursor.fetchone()
         if result and result[0]:
-            # Parse and format the timestamp
-            timestamp_str = result[0]
-            dt = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-            return dt.strftime('%B %d, %Y at %I:%M %p')
+            # Return the raw timestamp (already in 'YYYY-MM-DD HH:MM:SS' format from run_analyzer.py)
+            return result[0]
         return None
     except Exception:
         return None
