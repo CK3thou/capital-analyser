@@ -42,6 +42,9 @@ class CapitalAPI:
         self.cst = None
         self.security_token = None
         self.session_expiry = None
+        # Create a session that ignores proxy environment variables
+        self.session = requests.Session()
+        self.session.trust_env = False  # Don't use proxy from environment variables
         
     def create_session(self) -> bool:
         """Create a new API session with retry logic"""
@@ -62,7 +65,7 @@ class CapitalAPI:
         
         for attempt in range(1, max_retries + 1):
             try:
-                response = requests.post(url, headers=headers, json=payload, timeout=10)
+                response = self.session.post(url, headers=headers, json=payload, timeout=10)
                 
                 if response.status_code == 200:
                     self.cst = response.headers.get('CST')
@@ -119,7 +122,7 @@ class CapitalAPI:
         headers = self._get_auth_headers()
         
         try:
-            response = requests.get(url, headers=headers)
+            response = self.session.get(url, headers=headers)
             if response.status_code == 200:
                 self.session_expiry = datetime.now() + timedelta(minutes=10)
                 return True
@@ -176,7 +179,7 @@ class CapitalAPI:
                 # Retry logic for individual node fetches
                 for attempt in range(1, max_retries + 1):
                     try:
-                        response = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
+                        response = self.session.get(url, headers=headers, params={"limit": limit}, timeout=10)
                         
                         if response.status_code == 200:
                             data = response.json()
@@ -251,7 +254,7 @@ class CapitalAPI:
         
         for attempt in range(1, max_retries + 1):
             try:
-                response = requests.get(url, headers=headers, timeout=10)
+                response = self.session.get(url, headers=headers, timeout=10)
                 
                 if response.status_code == 200:
                     return response.json()
@@ -311,7 +314,7 @@ class CapitalAPI:
             params["to"] = to_date
         
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = self.session.get(url, headers=headers, params=params)
             if response.status_code == 200:
                 return response.json()
             return None
