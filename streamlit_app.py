@@ -9,6 +9,8 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+import subprocess
+import sys
 import database  # Import database module
 from capital_analyzer import CapitalAPI
 import config
@@ -112,6 +114,64 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def should_fetch_fresh_data():
+    """Check if we should fetch fresh data based on last fetch date"""
+    try:
+        last_updated = database.get_last_updated()
+        if not last_updated:
+            return True  # No data exists, fetch fresh data
+        
+        # Parse the last updated timestamp
+        last_fetch_date = datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S").date()
+        today = datetime.now().date()
+        
+        # Only fetch if it's a new day
+        if last_fetch_date < today:
+            return True
+        else:
+            return False  # Same day, use cached data
+    except Exception as e:
+        st.warning(f"Could not determine last fetch date: {str(e)}")
+        return True  # Default to fetching if we can't determine
+
+def run_analyzer():
+    """Run run_analyzer.py to fetch fresh market data"""
+    try:
+        st.info("🔄 Fetching fresh market data from Capital.com (this may take several minutes)...")
+        
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        analyzer_script = os.path.join(script_dir, 'run_analyzer.py')
+        
+        # Run the analyzer script and wait for completion
+        # Timeout set to 1 hour to accommodate large data fetches
+        result = subprocess.run(
+            [sys.executable, analyzer_script],
+            capture_output=True,
+            text=True,
+            timeout=3600  # 1 hour timeout
+        )
+        
+        if result.returncode == 0:
+            st.success("✓ Market data fetched and database updated successfully!")
+            # Show analyzer output for debugging
+            if result.stdout:
+                with st.expander("Analyzer Details"):
+                    st.text(result.stdout)
+        else:
+            st.error(f"✗ Error running analyzer:\n{result.stderr}")
+            # Show stdout for context
+            if result.stdout:
+                with st.expander("Analyzer Output"):
+                    st.text(result.stdout)
+            
+    except subprocess.TimeoutExpired:
+        st.error("✗ Analyzer took too long (timeout after 1 hour). Check your network connection and API credentials.")
+    except FileNotFoundError:
+        st.error("✗ run_analyzer.py not found in the same directory")
+    except Exception as e:
+        st.error(f"✗ Unexpected error running analyzer: {str(e)}")
+
 def load_market_data_from_api():
     """Fetch fresh market data from Capital.com API"""
     try:
@@ -190,6 +250,18 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Display header
+    st.header("📊 Capital.com Market Analyzer")
+    
+    # Check if we need to fetch fresh data
+    if should_fetch_fresh_data():
+        st.markdown("Starting up - fetching latest market data...")
+        with st.spinner("Fetching market data from Capital.com API..."):
+            run_analyzer()
+    else:
+        st.markdown("Using cached market data from today...")
+        st.info("ℹ️ Data was already fetched today. Run again tomorrow for fresh data, or manually delete the database to force a fresh fetch.")
+    
     # Get last updated time
     last_updated = database.get_last_updated()
     if not last_updated:
@@ -198,8 +270,7 @@ def main():
     # Load market data from database
     df = load_market_data()
     
-    # Header
-    st.title("📊 Capital.com Market Analyzer")
+    # Display subtitle
     st.markdown(f"Real-time market performance tracking across multiple asset classes | **Data Source:** 💾 Database | **Last Updated:** {last_updated}")
     
     if df is None or len(df) == 0:
