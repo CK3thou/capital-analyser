@@ -143,38 +143,42 @@ def should_fetch_fresh_data():
         return True  # Default to fetching if we can't determine
 
 def run_analyzer():
-    """Run run_analyzer.py to fetch fresh market data"""
+    """Run run_analyzer.py to fetch fresh market data with live progress streaming"""
     try:
-        st.info("🔄 Fetching fresh market data from Capital.com (this may take several minutes)...")
+        st.info("🔄 Fetching fresh market data from Capital.com...")
         
         # Get the directory where this script is located
         script_dir = os.path.dirname(os.path.abspath(__file__))
         analyzer_script = os.path.join(script_dir, 'run_analyzer.py')
         
-        # Run the analyzer script and wait for completion
-        # Timeout set to 1 hour to accommodate large data fetches
-        result = subprocess.run(
+        # Create a container for live output
+        output_container = st.empty()
+        output_text = []
+        
+        # Use Popen to stream output in real-time (no timeout)
+        process = subprocess.Popen(
             [sys.executable, analyzer_script],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            timeout=3600  # 1 hour timeout
+            bufsize=1
         )
         
-        if result.returncode == 0:
+        # Read and display output line by line as it comes in
+        for line in process.stdout:
+            output_text.append(line.rstrip())
+            # Update the container with accumulated output
+            with output_container.container():
+                st.code('\n'.join(output_text), language='text')
+        
+        # Wait for the process to complete
+        returncode = process.wait()
+        
+        if returncode == 0:
             st.success("✓ Market data fetched and database updated successfully!")
-            # Show analyzer output for debugging
-            if result.stdout:
-                with st.expander("Analyzer Details"):
-                    st.text(result.stdout)
         else:
-            st.error(f"✗ Error running analyzer:\n{result.stderr}")
-            # Show stdout for context
-            if result.stdout:
-                with st.expander("Analyzer Output"):
-                    st.text(result.stdout)
+            st.error(f"✗ Analyzer exited with error code: {returncode}")
             
-    except subprocess.TimeoutExpired:
-        st.error("✗ Analyzer took too long (timeout after 1 hour). Check your network connection and API credentials.")
     except FileNotFoundError:
         st.error("✗ run_analyzer.py not found in the same directory")
     except Exception as e:
