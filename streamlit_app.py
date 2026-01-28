@@ -118,20 +118,28 @@ def should_fetch_fresh_data():
     """Check if we should fetch fresh data based on last fetch date"""
     try:
         last_updated = database.get_last_updated()
+        st.write(f"[DEBUG] last_updated from DB: {last_updated}")
         if not last_updated:
+            st.write("[DEBUG] No last_updated found, will fetch fresh data")
             return True  # No data exists, fetch fresh data
         
         # Parse the last updated timestamp
         last_fetch_date = datetime.strptime(last_updated, "%Y-%m-%d %H:%M:%S").date()
         today = datetime.now().date()
         
+        st.write(f"[DEBUG] last_fetch_date: {last_fetch_date}, today: {today}")
+        
         # Only fetch if it's a new day
         if last_fetch_date < today:
+            st.write("[DEBUG] Data is from yesterday, will fetch fresh data")
             return True
         else:
+            st.write("[DEBUG] Data is from today, using cached data")
             return False  # Same day, use cached data
     except Exception as e:
         st.warning(f"Could not determine last fetch date: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
         return True  # Default to fetching if we can't determine
 
 def run_analyzer():
@@ -220,7 +228,20 @@ def load_market_data_from_api():
 @st.cache_data
 def load_market_data():
     """Load market data from SQLite database"""
-    return database.load_market_data_df()
+    try:
+        df = database.load_market_data_df()
+        if df is None:
+            st.error("[DEBUG] database.load_market_data_df() returned None")
+        elif len(df) == 0:
+            st.warning("[DEBUG] Database returned empty DataFrame")
+        else:
+            st.success(f"[DEBUG] Loaded {len(df)} rows from database")
+        return df
+    except Exception as e:
+        st.error(f"[DEBUG] Error loading market data: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
+        return None
 
 def initialize_session_state():
     """Initialize session state variables"""

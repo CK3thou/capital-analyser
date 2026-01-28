@@ -6,9 +6,6 @@ Stores data directly to SQLite database (primary storage)
 import csv
 import sqlite3
 import time
-import webbrowser
-import threading
-import subprocess
 from datetime import datetime
 from capital_analyzer import CapitalAPI
 import os
@@ -181,7 +178,7 @@ def fetch_and_analyze_markets(api: CapitalAPI, categories: list) -> list:
             details = api.get_market_details(epic)
             
             if not details:
-                print(f"    ⚠ Could not fetch details for {epic}")
+                print(f"    [WARNING] Could not fetch details for {epic}")
                 continue
             
             snapshot = details.get('snapshot', {})
@@ -330,13 +327,8 @@ def main():
     print(f"Backup CSV: {config.OUTPUT_FILENAME}")
     print(f"{'='*60}\n")
     
-    print("\nWeb viewer is running. Press Ctrl+C to stop.")
-    try:
-        # Keep the main thread alive
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n\nStopping...")
+    print("[OK] Analysis complete! Data saved to database and CSV file.")
+    print("You can now view the data using the web viewer (app.py) or open the CSV file.")
 
 
 if __name__ == "__main__":
